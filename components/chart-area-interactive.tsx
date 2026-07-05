@@ -28,7 +28,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export const description = "An interactive area chart";
 
-const rawData: Record<string, number> = {
+export const rawData: Record<string, number> = {
   "2026-06-20 00:30:00": 12_099_370,
   "2026-06-20 01:00:00": 12_434_511,
   "2026-06-20 01:30:00": 12_913_213,
@@ -780,7 +780,7 @@ export function ChartAreaInteractive() {
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
-          className="aspect-auto h-[250px] w-full"
+          className="aspect-auto h-62.5 w-full"
           config={chartConfig}
         >
           <AreaChart data={filteredData}>

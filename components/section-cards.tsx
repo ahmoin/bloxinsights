@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
+import { rawData } from "@/components/chart-area-interactive";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -11,14 +12,35 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+function getAverageCCULast24Hours(): number {
+  const now = new Date(
+    Math.max(...Object.keys(rawData).map((t) => new Date(t).getTime()))
+  );
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const last24hEntries = Object.entries(rawData).filter(([timestamp]) => {
+    const date = new Date(timestamp);
+    return date >= oneDayAgo && date <= now;
+  });
+
+  if (last24hEntries.length === 0) {
+    return 0;
+  }
+
+  const total = last24hEntries.reduce((sum, [, value]) => sum + value, 0);
+  return Math.round(total / last24hEntries.length);
+}
+
 export function SectionCards() {
+  const averageCCU = getAverageCCULast24Hours();
+
   return (
-    <div className="grid @5xl/main:grid-cols-4 @xl/main:grid-cols-2 grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 dark:*:data-[slot=card]:bg-card">
+    <div className="grid @5xl/main:grid-cols-4 @xl/main:grid-cols-2 grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 dark:*:data-[slot=card]:bg-card">
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Concurrent Users (CCU)</CardDescription>
           <CardTitle className="font-semibold @[250px]/card:text-3xl text-2xl tabular-nums">
-            16,345,678
+            {averageCCU.toLocaleString()}
           </CardTitle>
           <CardAction>
             <Badge variant="outline">

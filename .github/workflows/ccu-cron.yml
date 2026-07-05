@@ -14,4 +14,4 @@ jobs:
           curl --fail-with-body --silent --show-error --max-time 60 \
             --retry 3 --retry-delay 10 \
             --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://bloxinsights.com/api/cron/ccu
+            https://bloxinsights.vercel.app/api/cron/ccu

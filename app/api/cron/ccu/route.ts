@@ -1,5 +1,7 @@
 import { captureCcuSnapshot } from "@/lib/ccu";
 
+export const maxDuration = 300;
+
 export async function GET(request: Request) {
   const authorization = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;

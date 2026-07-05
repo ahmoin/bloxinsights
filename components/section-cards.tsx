@@ -1,7 +1,6 @@
 "use client";
 
 import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
-import type { CcuPoint } from "@/components/chart-area-interactive";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { CcuPoint } from "@/lib/ccu";
 
 function getAverageCCULast24Hours(entries: CcuPoint[]): number {
   if (entries.length === 0) {

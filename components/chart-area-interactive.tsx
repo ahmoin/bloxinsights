@@ -25,13 +25,9 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { CcuPoint } from "@/lib/ccu";
 
 export const description = "An interactive area chart";
-
-export interface CcuPoint {
-  ccu: number;
-  timestamp: string;
-}
 
 const getTimezoneName = () => {
   const date = new Date();

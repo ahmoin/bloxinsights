@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
-import { rawData } from "@/components/chart-area-interactive";
+import type { CcuPoint } from "@/components/chart-area-interactive";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -12,14 +12,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-function getAverageCCULast24Hours(): number {
+function getAverageCCULast24Hours(entries: CcuPoint[]): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+
   const now = new Date(
-    Math.max(...Object.keys(rawData).map((t) => new Date(t).getTime()))
+    Math.max(...entries.map((entry) => new Date(entry.timestamp).getTime()))
   );
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const last24hEntries = Object.entries(rawData).filter(([timestamp]) => {
-    const date = new Date(timestamp);
+  const last24hEntries = entries.filter((entry) => {
+    const date = new Date(entry.timestamp);
     return date >= oneDayAgo && date <= now;
   });
 
@@ -27,13 +31,12 @@ function getAverageCCULast24Hours(): number {
     return 0;
   }
 
-  const total = last24hEntries.reduce((sum, [, value]) => sum + value, 0);
+  const total = last24hEntries.reduce((sum, entry) => sum + entry.ccu, 0);
   return Math.round(total / last24hEntries.length);
 }
 
-export function SectionCards() {
-  const averageCCU = getAverageCCULast24Hours();
-
+export function SectionCards({ ccuHistory }: { ccuHistory: CcuPoint[] }) {
+  const averageCCU = getAverageCCULast24Hours(ccuHistory);
   return (
     <div className="grid @5xl/main:grid-cols-4 @xl/main:grid-cols-2 grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 dark:*:data-[slot=card]:bg-card">
       <Card className="@container/card">

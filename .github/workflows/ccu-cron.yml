@@ -1,0 +1,17 @@
+name: CCU Cron
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture CCU snapshot
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --retry 3 --retry-delay 10 \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://bloxinsights.com/api/cron/ccu

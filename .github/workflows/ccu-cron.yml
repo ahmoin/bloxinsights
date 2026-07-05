@@ -9,9 +9,17 @@ jobs:
   capture:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Capture CCU snapshot
-        run: |
-          curl --fail-with-body --silent --show-error --max-time 290 \
-            --retry 2 --retry-delay 30 \
-            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://bloxinsights.vercel.app/api/cron/ccu
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: node scripts/capture-ccu.mjs

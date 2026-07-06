@@ -3,8 +3,13 @@ import { chunkArray, sleep } from "@/lib/utils";
 
 const EXPLORE_SORTS_URL = "https://apis.roblox.com/explore-api/v1/get-sorts";
 const GAMES_API_URL = "https://games.roblox.com/v1/games";
+const GAME_ICONS_URL = "https://thumbnails.roblox.com/v1/games/icons";
 const GAMES_BATCH_SIZE = 50;
 const FETCH_CONCURRENCY = 5;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const RATE_LIMIT_WAIT_MS = 65_000;
+const MAX_ATTEMPTS = 3;
+const BATCH_PACING_MS = 2000;
 
 const DISCOVERY_COUNTRIES = [
   "gb",
@@ -59,6 +64,24 @@ const gamesResponseSchema = z.object({
   data: z.array(gameDetailsSchema),
 });
 
+const gameCreatorSchema = z.object({
+  id: z.number(),
+  creator: z.object({ name: z.string() }).nullish(),
+});
+
+const gameCreatorsResponseSchema = z.object({
+  data: z.array(gameCreatorSchema),
+});
+
+const gameIconSchema = z.object({
+  targetId: z.number(),
+  imageUrl: z.string().nullish(),
+});
+
+const gameIconsResponseSchema = z.object({
+  data: z.array(gameIconSchema),
+});
+
 export type ExploreGame = z.infer<typeof exploreGameSchema>;
 
 async function fetchSortsVariant(
@@ -98,11 +121,6 @@ export async function fetchChartedGames(): Promise<ExploreGame[]> {
   return games;
 }
 
-const HTTP_TOO_MANY_REQUESTS = 429;
-const RATE_LIMIT_WAIT_MS = 65_000;
-const MAX_ATTEMPTS = 3;
-const BATCH_PACING_MS = 2000;
-
 async function fetchCcuBatch(
   universeIds: number[],
   attempt = 1
@@ -127,6 +145,68 @@ async function fetchCcuBatch(
     ccuByUniverseId.set(entry.id, entry.playing);
   }
   return ccuByUniverseId;
+}
+
+export async function fetchGameCreators(
+  universeIds: number[]
+): Promise<Map<number, string>> {
+  const creatorsByUniverseId = new Map<number, string>();
+  if (universeIds.length === 0) {
+    return creatorsByUniverseId;
+  }
+
+  try {
+    const response = await fetch(
+      `${GAMES_API_URL}?universeIds=${universeIds.join(",")}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      return creatorsByUniverseId;
+    }
+    const data = gameCreatorsResponseSchema.parse(await response.json());
+    for (const entry of data.data) {
+      if (entry.creator?.name) {
+        creatorsByUniverseId.set(entry.id, entry.creator.name);
+      }
+    }
+  } catch {
+    // leaderboard still renders without creator names
+  }
+  return creatorsByUniverseId;
+}
+
+export async function fetchGameIcons(
+  universeIds: number[]
+): Promise<Map<number, string>> {
+  const iconsByUniverseId = new Map<number, string>();
+  if (universeIds.length === 0) {
+    return iconsByUniverseId;
+  }
+
+  const params = new URLSearchParams({
+    universeIds: universeIds.join(","),
+    size: "128x128",
+    format: "Png",
+    isCircular: "false",
+  });
+
+  try {
+    const response = await fetch(`${GAME_ICONS_URL}?${params.toString()}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return iconsByUniverseId;
+    }
+    const data = gameIconsResponseSchema.parse(await response.json());
+    for (const entry of data.data) {
+      if (entry.imageUrl) {
+        iconsByUniverseId.set(entry.targetId, entry.imageUrl);
+      }
+    }
+  } catch {
+    // leaderboard still renders without icons
+  }
+  return iconsByUniverseId;
 }
 
 export async function fetchLiveCcu(

@@ -263,7 +263,16 @@ async function main() {
     await sleep(BATCH_PACING_MS);
   }
 
-  const snapshotRows = [...ccuByUniverseId.entries()];
+  const knownUniverseIds = new Set(universeIds);
+  const snapshotRows = [...ccuByUniverseId.entries()].filter(([universeId]) =>
+    knownUniverseIds.has(universeId)
+  );
+  const droppedIds = [...ccuByUniverseId.keys()].filter(
+    (universeId) => !knownUniverseIds.has(universeId)
+  );
+  if (droppedIds.length > 0) {
+    console.log("dropped unknown universeIds:", droppedIds.join(", "));
+  }
   for (const batch of chunkArray(snapshotRows, SNAPSHOT_CHUNK_SIZE)) {
     const values = batch.map(() => "(?, ?, ?)").join(", ");
     const args = batch.flatMap(([universeId, playing]) => [

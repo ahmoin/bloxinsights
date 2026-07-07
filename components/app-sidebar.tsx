@@ -32,11 +32,6 @@ import {
 import { siteConfig } from "@/lib/config";
 
 const data = {
-  user: {
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "/avatars/john.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -100,7 +95,12 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  ...props
+}: ComponentProps<typeof Sidebar> & {
+  user: { name: string; email: string; avatar: string };
+}) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -126,7 +126,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         <NavSecondary className="mt-auto" items={data.navSecondary} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

@@ -246,7 +246,7 @@ function TopPlayersCard({ topGames }: { topGames: TopGame[] }) {
         badge: <RankChangeBadge rankChange={topGame.rankChange} />,
       }))}
       eyebrow="LEADERBOARD"
-      icon={<TrophyIcon className="size-3 text-yellow-500" />}
+      icon={<TrophyIcon className="size-3 fill-yellow-500 text-yellow-500" />}
       title="Top by Players"
     />
   );
@@ -268,7 +268,7 @@ function TopMoversCard({ topMovers }: { topMovers: TopMover[] }) {
         ),
       }))}
       eyebrow="TRENDING TODAY"
-      icon={<FlameIcon className="size-3 text-orange-500" />}
+      icon={<FlameIcon className="size-3 fill-orange-500 text-orange-500" />}
       title="Moving in Top 100"
     />
   );

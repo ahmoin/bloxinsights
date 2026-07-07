@@ -35,7 +35,7 @@ export function UserAuthForm({
               setIsLoading(true);
               await authClient.signIn.social({
                 provider: "roblox",
-                callbackURL: "/",
+                callbackURL: "/dashboard",
               });
             }}
             type="button"

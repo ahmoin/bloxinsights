@@ -15,7 +15,7 @@ export default async function AuthenticationPage() {
     headers: await headers(),
   });
   if (session) {
-    return redirect("/");
+    return redirect("/dashboard");
   }
 
   return (

@@ -12,12 +12,23 @@ export const metadata: Metadata = {
 export default function GeneratePage() {
   return (
     <AppShell title="Generate">
-      <ThumbnailEmpty
-        description="Paste a game link or describe your idea and we'll generate a thumbnail for you."
-        icon={<PaintBucketIcon />}
-        showTutorial
-        title="Get started by creating your first thumbnail"
-      />
+      <div className="relative isolate flex flex-1 flex-col">
+        <div className="aura-container">
+          <div className="aura-content">
+            <div className="aura-wrapper aura">
+              <div className="aura-rays-wrapper aura-rays">
+                <div className="aura-blue-element aura-blue" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <ThumbnailEmpty
+          description="Paste a game link or describe your idea and we'll generate a thumbnail for you."
+          icon={<PaintBucketIcon />}
+          showTutorial
+          title="Get started by creating your first thumbnail"
+        />
+      </div>
     </AppShell>
   );
 }

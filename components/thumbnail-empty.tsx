@@ -27,14 +27,16 @@ export function ThumbnailEmpty({
   title: string;
 }) {
   return (
-    <Empty className="flex-1">
-      <EmptyHeader>
+    <Empty className="flex-1 gap-8 p-10">
+      <EmptyHeader className="max-w-lg gap-4">
         <EmptyMedia variant="icon">{icon}</EmptyMedia>
-        <EmptyTitle className="text-lg">{title}</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
+        <EmptyTitle className="font-semibold text-3xl tracking-tight">
+          {title}
+        </EmptyTitle>
+        <EmptyDescription className="text-base">{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <CreateThumbnailDialog />
           {showTutorial && (
             <Button asChild variant="outline">

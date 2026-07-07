@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "Bloxinsights",
-  url: "https://bloxinsights.com",
-  ogImage: "https://bloxinsights.com/opengraph-image.png",
+  url: "https://bloxinsights.vercel.app",
+  ogImage: "https://bloxinsights.vercel.app/opengraph-image.png",
   description:
     "Dashboard for managing Roblox games and assets around them mainly focusing on analytics.",
   links: {

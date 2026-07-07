@@ -190,7 +190,7 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
               dataKey="ccu"
               fill="url(#fillCcu)"
               stroke="var(--color-ccu)"
-              type="natural"
+              type="linear"
             />
           </AreaChart>
         </ChartContainer>

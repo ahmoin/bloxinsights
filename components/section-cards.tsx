@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  FlameIcon,
-  TrendingDownIcon,
-  TrendingUpIcon,
-  TrophyIcon,
-} from "lucide-react";
+import { FlameIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Icons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -167,11 +163,13 @@ function RankChangeBadge({ rankChange }: { rankChange: number | null }) {
 function LeaderboardCard({
   entries,
   eyebrow,
+  exploreHref,
   icon,
   title,
 }: {
   entries: LeaderboardEntry[];
   eyebrow: string;
+  exploreHref: string;
   icon: ReactNode;
   title: string;
 }) {
@@ -231,7 +229,7 @@ function LeaderboardCard({
       </CardContent>
       <CardFooter className="px-3">
         <Button asChild className="w-full" size="sm" variant="outline">
-          <Link href="/dashboard">Explore List</Link>
+          <Link href={exploreHref}>Explore List</Link>
         </Button>
       </CardFooter>
     </Card>
@@ -245,8 +243,9 @@ function TopPlayersCard({ topGames }: { topGames: TopGame[] }) {
         ...topGame,
         badge: <RankChangeBadge rankChange={topGame.rankChange} />,
       }))}
+      exploreHref="/games?sort=-playing"
       eyebrow="LEADERBOARD"
-      icon={<TrophyIcon className="size-3 fill-yellow-500 text-yellow-500" />}
+      icon={<Icons.trophy className="size-3 text-yellow-500" />}
       title="Top by Players"
     />
   );
@@ -267,6 +266,7 @@ function TopMoversCard({ topMovers }: { topMovers: TopMover[] }) {
           </Badge>
         ),
       }))}
+      exploreHref="/games?sort=-rank_change_day&rank_max=100"
       eyebrow="TRENDING TODAY"
       icon={<FlameIcon className="size-3 fill-orange-500 text-orange-500" />}
       title="Moving in Top 100"

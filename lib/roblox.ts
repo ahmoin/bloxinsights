@@ -64,6 +64,17 @@ const gamesResponseSchema = z.object({
   data: z.array(gameDetailsSchema),
 });
 
+const gameMetricsSchema = z.object({
+  id: z.number(),
+  created: z.string(),
+  favoritedCount: z.number().default(0),
+  visits: z.number().default(0),
+});
+
+const gameMetricsResponseSchema = z.object({
+  data: z.array(gameMetricsSchema),
+});
+
 const gameCreatorSchema = z.object({
   id: z.number(),
   creator: z.object({ name: z.string() }).nullish(),
@@ -207,6 +218,56 @@ export async function fetchGameIcons(
     // leaderboard still renders without icons
   }
   return iconsByUniverseId;
+}
+
+export interface GameMetrics {
+  dateCreated: Date;
+  favoritedCount: number;
+  visits: number;
+}
+
+async function fetchGameMetricsBatch(
+  universeIds: number[]
+): Promise<Map<number, GameMetrics>> {
+  const metricsByUniverseId = new Map<number, GameMetrics>();
+
+  try {
+    const response = await fetch(
+      `${GAMES_API_URL}?universeIds=${universeIds.join(",")}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      return metricsByUniverseId;
+    }
+    const data = gameMetricsResponseSchema.parse(await response.json());
+    for (const entry of data.data) {
+      metricsByUniverseId.set(entry.id, {
+        dateCreated: new Date(entry.created),
+        favoritedCount: entry.favoritedCount,
+        visits: entry.visits,
+      });
+    }
+  } catch {
+    // metrics are best-effort; games keep their previous values
+  }
+
+  return metricsByUniverseId;
+}
+
+export async function fetchGameMetrics(
+  universeIds: number[]
+): Promise<Map<number, GameMetrics>> {
+  const metricsByUniverseId = new Map<number, GameMetrics>();
+
+  for (const batch of chunkArray(universeIds, GAMES_BATCH_SIZE)) {
+    const result = await fetchGameMetricsBatch(batch);
+    for (const [universeId, metrics] of result) {
+      metricsByUniverseId.set(universeId, metrics);
+    }
+    await sleep(BATCH_PACING_MS);
+  }
+
+  return metricsByUniverseId;
 }
 
 export async function fetchLiveCcu(

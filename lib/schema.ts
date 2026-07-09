@@ -115,6 +115,9 @@ export const game = sqliteTable("game", {
   playerCount: integer("playerCount").notNull().default(0),
   totalUpVotes: integer("totalUpVotes").notNull().default(0),
   totalDownVotes: integer("totalDownVotes").notNull().default(0),
+  visits: integer("visits").notNull().default(0),
+  favoritedCount: integer("favoritedCount").notNull().default(0),
+  dateCreated: integer("dateCreated", { mode: "timestamp" }),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),

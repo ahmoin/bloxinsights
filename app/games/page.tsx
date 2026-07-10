@@ -1,16 +1,6 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ChevronsUpDownIcon,
-  TrendingDownIcon,
-  TrendingUpIcon,
-} from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { GamesColumnsMenu } from "@/components/games-columns-menu";
-import { Badge } from "@/components/ui/badge";
+import { GamesTable } from "@/components/games-table";
 import {
   Pagination,
   PaginationContent,
@@ -21,14 +11,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   type GamesListSort,
   type GamesListSortField,
   getGamesList,
@@ -38,7 +20,6 @@ import {
   GAMES_METRIC_COLUMNS,
 } from "@/lib/games-columns";
 
-const GAME_ICON_SIZE = 40;
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 const PAGE_WINDOW = 1;
@@ -62,64 +43,12 @@ function isGamesListSort(value: string | undefined): value is GamesListSort {
   return SORT_FIELDS.has(field as GamesListSortField);
 }
 
-function sortDirections(field: GamesListSortField) {
-  return { asc: field, desc: `-${field}` as GamesListSort };
-}
-
 function nextSort(
   field: GamesListSortField,
   currentSort: GamesListSort
 ): GamesListSort {
-  const directions = sortDirections(field);
-  return currentSort === directions.desc ? directions.asc : directions.desc;
-}
-
-function SortableHead({
-  children,
-  currentSort,
-  href,
-  sortKey,
-}: {
-  children: ReactNode;
-  currentSort: GamesListSort;
-  href: string;
-  sortKey: GamesListSortField;
-}) {
-  const directions = sortDirections(sortKey);
-  const isAsc = currentSort === directions.asc;
-  const isDesc = currentSort === directions.desc;
-  return (
-    <TableHead className="text-right">
-      <Link className="inline-flex items-center justify-end gap-1" href={href}>
-        {children}
-        {isAsc && <ArrowUpIcon className="size-3.5" />}
-        {isDesc && <ArrowDownIcon className="size-3.5" />}
-        {!(isAsc || isDesc) && (
-          <ChevronsUpDownIcon className="size-3.5 text-muted-foreground" />
-        )}
-      </Link>
-    </TableHead>
-  );
-}
-
-function RankChangeCell({ rankChange }: { rankChange: number | null }) {
-  if (rankChange === null || rankChange === 0) {
-    return <span className="text-muted-foreground">–</span>;
-  }
-  const movedUp = rankChange > 0;
-  return (
-    <Badge
-      className={
-        movedUp
-          ? "border-green-500/30 bg-green-500/10 text-green-500"
-          : "border-red-500/30 bg-red-500/10 text-red-500"
-      }
-      variant="outline"
-    >
-      {movedUp ? <TrendingUpIcon /> : <TrendingDownIcon />}
-      {Math.abs(rankChange)}
-    </Badge>
-  );
+  const desc = `-${field}` as GamesListSort;
+  return currentSort === desc ? field : desc;
 }
 
 function buildGamesHref({
@@ -262,8 +191,6 @@ export default async function Page({
       sort: nextSort(field, sort),
     });
 
-  const columnCount = 3 + visibleColumns.size;
-
   return (
     <AppShell title="Games">
       <div className="@container/main flex flex-1 flex-col gap-4 py-4 md:py-6">
@@ -271,157 +198,12 @@ export default async function Page({
           <GamesColumnsMenu visibleColumns={columns} />
         </div>
         <div className="overflow-hidden rounded-lg border px-4 lg:px-6">
-          <Table>
-            <TableHeader className="bg-muted">
-              <TableRow>
-                <TableHead className="w-12">Rank</TableHead>
-                <TableHead>Game</TableHead>
-                <SortableHead
-                  currentSort={sort}
-                  href={hrefForSort("playing")}
-                  sortKey="playing"
-                >
-                  Players (CCU)
-                </SortableHead>
-                {visibleColumns.has("rankChange") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("rank_change_day")}
-                    sortKey="rank_change_day"
-                  >
-                    Rank Change
-                  </SortableHead>
-                )}
-                {visibleColumns.has("visits") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("visits")}
-                    sortKey="visits"
-                  >
-                    Visits
-                  </SortableHead>
-                )}
-                {visibleColumns.has("favorites") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("favorites")}
-                    sortKey="favorites"
-                  >
-                    Favorites
-                  </SortableHead>
-                )}
-                {visibleColumns.has("upVotes") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("up_votes")}
-                    sortKey="up_votes"
-                  >
-                    Upvotes
-                  </SortableHead>
-                )}
-                {visibleColumns.has("downVotes") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("down_votes")}
-                    sortKey="down_votes"
-                  >
-                    Downvotes
-                  </SortableHead>
-                )}
-                {visibleColumns.has("created") && (
-                  <SortableHead
-                    currentSort={sort}
-                    href={hrefForSort("created")}
-                    sortKey="created"
-                  >
-                    Created
-                  </SortableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {games.length === 0 ? (
-                <TableRow>
-                  <TableCell className="h-24 text-center" colSpan={columnCount}>
-                    No games found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                games.map((entry) => (
-                  <TableRow key={entry.universeId}>
-                    <TableCell className="font-medium text-muted-foreground">
-                      #{entry.rank}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        className="flex items-center gap-2"
-                        href={`https://www.roblox.com/games/${entry.rootPlaceId}`}
-                        rel="noopener"
-                        target="_blank"
-                      >
-                        {entry.iconUrl ? (
-                          <Image
-                            alt={`${entry.name} icon`}
-                            className="rounded"
-                            height={GAME_ICON_SIZE}
-                            src={entry.iconUrl}
-                            width={GAME_ICON_SIZE}
-                          />
-                        ) : (
-                          <div className="size-8 rounded bg-muted" />
-                        )}
-                        <div className="min-w-0">
-                          <div className="line-clamp-1 break-all font-medium">
-                            {entry.name}
-                          </div>
-                          <div className="truncate text-muted-foreground text-xs">
-                            {entry.creatorName ? `@${entry.creatorName}` : " "}
-                          </div>
-                        </div>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.playerCount.toLocaleString()}
-                    </TableCell>
-                    {visibleColumns.has("rankChange") && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end">
-                          <RankChangeCell rankChange={entry.rankChange} />
-                        </div>
-                      </TableCell>
-                    )}
-                    {visibleColumns.has("visits") && (
-                      <TableCell className="text-right tabular-nums">
-                        {entry.visits.toLocaleString()}
-                      </TableCell>
-                    )}
-                    {visibleColumns.has("favorites") && (
-                      <TableCell className="text-right tabular-nums">
-                        {entry.favoritedCount.toLocaleString()}
-                      </TableCell>
-                    )}
-                    {visibleColumns.has("upVotes") && (
-                      <TableCell className="text-right tabular-nums">
-                        {entry.upVotes.toLocaleString()}
-                      </TableCell>
-                    )}
-                    {visibleColumns.has("downVotes") && (
-                      <TableCell className="text-right tabular-nums">
-                        {entry.downVotes.toLocaleString()}
-                      </TableCell>
-                    )}
-                    {visibleColumns.has("created") && (
-                      <TableCell className="text-right text-muted-foreground">
-                        {entry.dateCreated
-                          ? entry.dateCreated.toLocaleDateString()
-                          : "–"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <GamesTable
+            currentSort={sort}
+            games={games}
+            hrefForSort={hrefForSort}
+            visibleColumns={visibleColumns}
+          />
         </div>
         <div className="flex flex-col items-center justify-between gap-2 px-4 sm:flex-row lg:px-6">
           <div className="text-muted-foreground text-sm">

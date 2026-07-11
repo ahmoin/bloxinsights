@@ -1,8 +1,14 @@
 "use client";
 
-import { ImagePlusIcon, PaintBucketIcon, XIcon } from "lucide-react";
+import {
+  ImagePlusIcon,
+  Loader2Icon,
+  PaintBucketIcon,
+  XIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 import {
   Attachment,
@@ -66,6 +72,10 @@ export function CreateThumbnailDialog() {
   const [gameLinkError, setGameLinkError] = useState<string | null>(null);
   const [gameConceptError, setGameConceptError] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
+    null
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const clearReferenceImages = () => {
@@ -107,6 +117,7 @@ export function CreateThumbnailDialog() {
     setGameLinkError(null);
     setGameConceptError(null);
     clearReferenceImages();
+    setGeneratedImageUrl(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -116,23 +127,61 @@ export function CreateThumbnailDialog() {
     }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const validateActiveTab = (): boolean => {
     if (tab === "with-game") {
       const result = gameLinkSchema.safeParse(gameLink);
       if (!result.success) {
         setGameLinkError(result.error.issues[0]?.message ?? null);
-        return;
+        return false;
       }
-    } else {
-      const result = gameConceptSchema.safeParse(gameConcept);
-      if (!result.success) {
-        setGameConceptError(result.error.issues[0]?.message ?? null);
-        return;
-      }
+      return true;
     }
-    setOpen(false);
-    resetForm();
+    const result = gameConceptSchema.safeParse(gameConcept);
+    if (!result.success) {
+      setGameConceptError(result.error.issues[0]?.message ?? null);
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!validateActiveTab()) {
+      return;
+    }
+
+    const formData = new FormData();
+    if (tab === "with-game") {
+      formData.set("gameLink", gameLink);
+      formData.set("idea", idea);
+    } else {
+      formData.set("gameConcept", gameConcept);
+    }
+    for (const image of referenceImages) {
+      formData.append("referenceImages", image.file);
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/thumbnails/generate", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await response.json()) as {
+        imageUrl?: string;
+        error?: string;
+      };
+      if (!(response.ok && data.imageUrl)) {
+        throw new Error(data.error ?? "Failed to generate thumbnail");
+      }
+      setGeneratedImageUrl(data.imageUrl);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate thumbnail"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -144,157 +193,188 @@ export function CreateThumbnailDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form
-          className="flex min-w-0 flex-col gap-6"
-          noValidate
-          onSubmit={handleSubmit}
-        >
-          <DialogHeader>
-            <DialogTitle>Create Thumbnail</DialogTitle>
-            <DialogDescription>
-              Use your game link, or tell us about the game you're making.
-            </DialogDescription>
-          </DialogHeader>
-          <Tabs className="gap-4" onValueChange={setTab} value={tab}>
-            <TabsList className="w-full">
-              <TabsTrigger value="with-game">I have a game</TabsTrigger>
-              <TabsTrigger value="no-game">No game yet</TabsTrigger>
-            </TabsList>
-            <TabsContent value="with-game">
-              <FieldGroup>
-                <Field data-invalid={gameLinkError !== null}>
-                  <FieldLabel htmlFor="thumbnail-game-link">
-                    Game link
-                  </FieldLabel>
-                  <Input
-                    aria-invalid={gameLinkError !== null}
-                    id="thumbnail-game-link"
-                    onChange={(event) => {
-                      setGameLink(event.target.value);
-                      setGameLinkError(null);
-                    }}
-                    placeholder="https://www.roblox.com/games/123456"
-                    type="url"
-                    value={gameLink}
-                  />
-                  {gameLinkError === null ? (
-                    <FieldDescription>
-                      We use the game link to pull the game's name, genre, and
-                      style.
-                    </FieldDescription>
-                  ) : (
-                    <FieldError>{gameLinkError}</FieldError>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="thumbnail-idea">
-                    Thumbnail idea
-                  </FieldLabel>
-                  <Textarea
-                    id="thumbnail-idea"
-                    onChange={(event) => setIdea(event.target.value)}
-                    placeholder="Describe the scene, characters, or vibe you want..."
-                    rows={3}
-                    value={idea}
-                  />
-                  <FieldDescription>
-                    Optional — leave blank and we'll come up with some.
-                  </FieldDescription>
-                </Field>
-              </FieldGroup>
-            </TabsContent>
-            <TabsContent value="no-game">
-              <FieldGroup>
-                <Field data-invalid={gameConceptError !== null}>
-                  <FieldLabel htmlFor="thumbnail-game-concept">
-                    What's your game about?
-                  </FieldLabel>
-                  <Textarea
-                    aria-invalid={gameConceptError !== null}
-                    id="thumbnail-game-concept"
-                    onChange={(event) => {
-                      setGameConcept(event.target.value);
-                      setGameConceptError(null);
-                    }}
-                    placeholder="An obby where you escape a giant grandma's house..."
-                    rows={4}
-                    value={gameConcept}
-                  />
-                  {gameConceptError === null ? (
-                    <FieldDescription>
-                      Describe the genre, setting, or vibe and we'll come up
-                      with some thumbnails.
-                    </FieldDescription>
-                  ) : (
-                    <FieldError>{gameConceptError}</FieldError>
-                  )}
-                </Field>
-              </FieldGroup>
-            </TabsContent>
-          </Tabs>
-          <Field className="min-w-0">
-            <FieldLabel htmlFor="thumbnail-reference-images">
-              Reference images
-            </FieldLabel>
-            <input
-              accept="image/*"
-              className="hidden"
-              id="thumbnail-reference-images"
-              multiple
-              onChange={handleReferenceImagesChange}
-              ref={fileInputRef}
-              type="file"
+        {generatedImageUrl ? (
+          <div className="flex min-w-0 flex-col gap-6">
+            <DialogHeader>
+              <DialogTitle>Thumbnail ready</DialogTitle>
+              <DialogDescription>
+                Here's what we generated. You can create another or close this
+                dialog.
+              </DialogDescription>
+            </DialogHeader>
+            <Image
+              alt="Generated thumbnail"
+              className="w-full rounded-md border"
+              height={432}
+              src={generatedImageUrl}
+              unoptimized
+              width={768}
             />
-            {referenceImages.length > 0 && (
-              <AttachmentGroup className="flex-wrap gap-2 overflow-x-visible">
-                {referenceImages.map((image) => (
-                  <Attachment key={image.previewUrl} size="sm">
-                    <AttachmentMedia variant="image">
-                      <Image
-                        alt={image.file.name}
-                        height={REFERENCE_IMAGE_PREVIEW_SIZE}
-                        src={image.previewUrl}
-                        unoptimized
-                        width={REFERENCE_IMAGE_PREVIEW_SIZE}
-                      />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>{image.file.name}</AttachmentTitle>
-                      <AttachmentDescription>
-                        {formatFileSize(image.file.size)}
-                      </AttachmentDescription>
-                    </AttachmentContent>
-                    <AttachmentActions>
-                      <AttachmentAction
-                        aria-label={`Remove ${image.file.name}`}
-                        onClick={() => removeReferenceImage(image.previewUrl)}
-                      >
-                        <XIcon />
-                      </AttachmentAction>
-                    </AttachmentActions>
-                  </Attachment>
-                ))}
-              </AttachmentGroup>
-            )}
-            <Button
-              className="w-fit"
-              onClick={() => fileInputRef.current?.click()}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <ImagePlusIcon />
-              Add images
-            </Button>
-            <FieldDescription>
-              Optional — screenshots, characters, or thumbnails whose style you
-              like.
-            </FieldDescription>
-          </Field>
-          <DialogFooter>
-            <Button type="submit">Create Thumbnail</Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button onClick={resetForm} type="button" variant="outline">
+                Create Another
+              </Button>
+              <Button onClick={() => setOpen(false)} type="button">
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <form
+            className="flex min-w-0 flex-col gap-6"
+            noValidate
+            onSubmit={handleSubmit}
+          >
+            <DialogHeader>
+              <DialogTitle>Create Thumbnail</DialogTitle>
+              <DialogDescription>
+                Use your game link, or tell us about the game you're making.
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs className="gap-4" onValueChange={setTab} value={tab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="with-game">I have a game</TabsTrigger>
+                <TabsTrigger value="no-game">No game yet</TabsTrigger>
+              </TabsList>
+              <TabsContent value="with-game">
+                <FieldGroup>
+                  <Field data-invalid={gameLinkError !== null}>
+                    <FieldLabel htmlFor="thumbnail-game-link">
+                      Game link
+                    </FieldLabel>
+                    <Input
+                      aria-invalid={gameLinkError !== null}
+                      id="thumbnail-game-link"
+                      onChange={(event) => {
+                        setGameLink(event.target.value);
+                        setGameLinkError(null);
+                      }}
+                      placeholder="https://www.roblox.com/games/123456"
+                      type="url"
+                      value={gameLink}
+                    />
+                    {gameLinkError === null ? (
+                      <FieldDescription>
+                        We use the game link to pull the game's name, genre, and
+                        style.
+                      </FieldDescription>
+                    ) : (
+                      <FieldError>{gameLinkError}</FieldError>
+                    )}
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="thumbnail-idea">
+                      Thumbnail idea
+                    </FieldLabel>
+                    <Textarea
+                      id="thumbnail-idea"
+                      onChange={(event) => setIdea(event.target.value)}
+                      placeholder="Describe the scene, characters, or vibe you want..."
+                      rows={3}
+                      value={idea}
+                    />
+                    <FieldDescription>
+                      Optional — leave blank and we'll come up with some.
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </TabsContent>
+              <TabsContent value="no-game">
+                <FieldGroup>
+                  <Field data-invalid={gameConceptError !== null}>
+                    <FieldLabel htmlFor="thumbnail-game-concept">
+                      What's your game about?
+                    </FieldLabel>
+                    <Textarea
+                      aria-invalid={gameConceptError !== null}
+                      id="thumbnail-game-concept"
+                      onChange={(event) => {
+                        setGameConcept(event.target.value);
+                        setGameConceptError(null);
+                      }}
+                      placeholder="An obby where you escape a giant grandma's house..."
+                      rows={4}
+                      value={gameConcept}
+                    />
+                    {gameConceptError === null ? (
+                      <FieldDescription>
+                        Describe the genre, setting, or vibe and we'll come up
+                        with some thumbnails.
+                      </FieldDescription>
+                    ) : (
+                      <FieldError>{gameConceptError}</FieldError>
+                    )}
+                  </Field>
+                </FieldGroup>
+              </TabsContent>
+            </Tabs>
+            <Field className="min-w-0">
+              <FieldLabel htmlFor="thumbnail-reference-images">
+                Reference images
+              </FieldLabel>
+              <input
+                accept="image/*"
+                className="hidden"
+                id="thumbnail-reference-images"
+                multiple
+                onChange={handleReferenceImagesChange}
+                ref={fileInputRef}
+                type="file"
+              />
+              {referenceImages.length > 0 && (
+                <AttachmentGroup className="flex-wrap gap-2 overflow-x-visible">
+                  {referenceImages.map((image) => (
+                    <Attachment key={image.previewUrl} size="sm">
+                      <AttachmentMedia variant="image">
+                        <Image
+                          alt={image.file.name}
+                          height={REFERENCE_IMAGE_PREVIEW_SIZE}
+                          src={image.previewUrl}
+                          unoptimized
+                          width={REFERENCE_IMAGE_PREVIEW_SIZE}
+                        />
+                      </AttachmentMedia>
+                      <AttachmentContent>
+                        <AttachmentTitle>{image.file.name}</AttachmentTitle>
+                        <AttachmentDescription>
+                          {formatFileSize(image.file.size)}
+                        </AttachmentDescription>
+                      </AttachmentContent>
+                      <AttachmentActions>
+                        <AttachmentAction
+                          aria-label={`Remove ${image.file.name}`}
+                          onClick={() => removeReferenceImage(image.previewUrl)}
+                        >
+                          <XIcon />
+                        </AttachmentAction>
+                      </AttachmentActions>
+                    </Attachment>
+                  ))}
+                </AttachmentGroup>
+              )}
+              <Button
+                className="w-fit"
+                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ImagePlusIcon />
+                Add images
+              </Button>
+              <FieldDescription>
+                Optional — screenshots, characters, or thumbnails whose style
+                you like.
+              </FieldDescription>
+            </Field>
+            <DialogFooter>
+              <Button disabled={isGenerating} type="submit">
+                {isGenerating && <Loader2Icon className="animate-spin" />}
+                {isGenerating ? "Generating..." : "Create Thumbnail"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

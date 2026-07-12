@@ -11,6 +11,8 @@ import {
   toImageProxyUrl,
 } from "@/lib/thumbnails";
 
+export const maxDuration = 300;
+
 const MAX_REFERENCE_IMAGES = 4;
 
 async function fileToDataUri(file: File): Promise<string> {

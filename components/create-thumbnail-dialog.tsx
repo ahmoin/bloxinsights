@@ -1,13 +1,21 @@
 "use client";
 
 import {
+  DownloadIcon,
+  ExternalLinkIcon,
   ImagePlusIcon,
   Loader2Icon,
   PaintBucketIcon,
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -45,6 +53,13 @@ import { formatFileSize } from "@/lib/utils";
 const ROBLOX_GAME_LINK_PATTERN =
   /^https:\/\/(www\.)?roblox\.com\/(games|share)\/\d+/;
 const REFERENCE_IMAGE_PREVIEW_SIZE = 64;
+const GENERATION_TIMER_INTERVAL_MS = 1000;
+
+function formatElapsedTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
 
 interface ReferenceImage {
   file: File;
@@ -63,6 +78,8 @@ const gameConceptSchema = z
   .string()
   .min(1, "Describe what your game is going to be about");
 
+type ThumbnailModel = "fast" | "quality";
+
 export function CreateThumbnailDialog() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("with-game");
@@ -76,7 +93,38 @@ export function CreateThumbnailDialog() {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
     null
   );
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [model, setModel] = useState<ThumbnailModel>("fast");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      return;
+    }
+    setElapsedSeconds(0);
+    const intervalId = setInterval(() => {
+      setElapsedSeconds((current) => current + 1);
+    }, GENERATION_TIMER_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [isGenerating]);
+
+  const handleDownload = async () => {
+    if (!generatedImageUrl) {
+      return;
+    }
+    try {
+      const response = await fetch(generatedImageUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "thumbnail.png";
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error("Failed to download thumbnail");
+    }
+  };
 
   const clearReferenceImages = () => {
     for (const image of referenceImages) {
@@ -118,6 +166,7 @@ export function CreateThumbnailDialog() {
     setGameConceptError(null);
     clearReferenceImages();
     setGeneratedImageUrl(null);
+    setModel("fast");
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -157,6 +206,7 @@ export function CreateThumbnailDialog() {
     } else {
       formData.set("gameConcept", gameConcept);
     }
+    formData.set("model", model);
     for (const image of referenceImages) {
       formData.append("referenceImages", image.file);
     }
@@ -210,13 +260,36 @@ export function CreateThumbnailDialog() {
               unoptimized
               width={768}
             />
-            <DialogFooter>
-              <Button onClick={resetForm} type="button" variant="outline">
-                Create Another
-              </Button>
-              <Button onClick={() => setOpen(false)} type="button">
-                Done
-              </Button>
+            <DialogFooter className="sm:justify-between">
+              <div className="flex gap-2">
+                <Button asChild size="icon" variant="outline">
+                  <a
+                    aria-label="Open in new tab"
+                    href={generatedImageUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <ExternalLinkIcon />
+                  </a>
+                </Button>
+                <Button
+                  aria-label="Download thumbnail"
+                  onClick={handleDownload}
+                  size="icon"
+                  type="button"
+                  variant="outline"
+                >
+                  <DownloadIcon />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={resetForm} type="button" variant="outline">
+                  Create Another
+                </Button>
+                <Button onClick={() => setOpen(false)} type="button">
+                  Done
+                </Button>
+              </div>
             </DialogFooter>
           </div>
         ) : (
@@ -367,10 +440,37 @@ export function CreateThumbnailDialog() {
                 you like.
               </FieldDescription>
             </Field>
+            <Field>
+              <FieldLabel htmlFor="thumbnail-model">Quality</FieldLabel>
+              <div className="flex gap-2" id="thumbnail-model">
+                <Button
+                  aria-pressed={model === "fast"}
+                  className="flex-1"
+                  onClick={() => setModel("fast")}
+                  size="sm"
+                  type="button"
+                  variant={model === "fast" ? "default" : "outline"}
+                >
+                  Fast
+                </Button>
+                <Button
+                  aria-pressed={model === "quality"}
+                  className="flex-1"
+                  onClick={() => setModel("quality")}
+                  size="sm"
+                  type="button"
+                  variant={model === "quality" ? "default" : "outline"}
+                >
+                  High Quality
+                </Button>
+              </div>
+            </Field>
             <DialogFooter>
               <Button disabled={isGenerating} type="submit">
                 {isGenerating && <Loader2Icon className="animate-spin" />}
-                {isGenerating ? "Generating..." : "Create Thumbnail"}
+                {isGenerating
+                  ? `Generating... ${formatElapsedTime(elapsedSeconds)}`
+                  : "Create Thumbnail"}
               </Button>
             </DialogFooter>
           </form>

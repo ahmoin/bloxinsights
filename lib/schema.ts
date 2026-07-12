@@ -158,3 +158,33 @@ export const gameCcuRelations = relations(gameCcu, ({ one }) => ({
     references: [game.universeId],
   }),
 }));
+
+export const thumbnail = sqliteTable(
+  "thumbnail",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    imageUrl: text("imageUrl").notNull(),
+    referenceImageUrls: text("referenceImageUrls", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    prompt: text("prompt").notNull(),
+    model: text("model").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("thumbnail_userId_createdAt_idx").on(table.userId, table.createdAt),
+  ]
+);
+
+export const thumbnailRelations = relations(thumbnail, ({ one }) => ({
+  user: one(user, {
+    fields: [thumbnail.userId],
+    references: [user.id],
+  }),
+}));

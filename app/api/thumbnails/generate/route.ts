@@ -1,6 +1,14 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { buildThumbnailPrompt, generateThumbnail } from "@/lib/thumbnails";
+import {
+  buildThumbnailPrompt,
+  generateThumbnail,
+  saveThumbnail,
+  storeGeneratedImage,
+  storeReferenceImage,
+  THUMBNAIL_MODELS,
+  type ThumbnailModelId,
+} from "@/lib/thumbnails";
 
 const MAX_REFERENCE_IMAGES = 4;
 
@@ -19,6 +27,11 @@ export async function POST(request: Request) {
   const gameLink = formData.get("gameLink");
   const gameConcept = formData.get("gameConcept");
   const idea = formData.get("idea");
+  const modelInput = formData.get("model");
+  const model: ThumbnailModelId =
+    typeof modelInput === "string" && modelInput in THUMBNAIL_MODELS
+      ? (modelInput as ThumbnailModelId)
+      : "fast";
   const referenceImageFiles = formData
     .getAll("referenceImages")
     .filter((value): value is File => value instanceof File)
@@ -32,10 +45,27 @@ export async function POST(request: Request) {
   });
 
   try {
-    const referenceImages = await Promise.all(
-      referenceImageFiles.map(fileToDataUri)
-    );
-    const imageUrl = await generateThumbnail({ prompt, referenceImages });
+    const [referenceImages, referenceImageUrls] = await Promise.all([
+      Promise.all(referenceImageFiles.map(fileToDataUri)),
+      Promise.all(
+        referenceImageFiles.map((file) =>
+          storeReferenceImage(file, session.user.id)
+        )
+      ),
+    ]);
+    const replicateUrl = await generateThumbnail({
+      prompt,
+      referenceImages,
+      model,
+    });
+    const imageUrl = await storeGeneratedImage(replicateUrl, session.user.id);
+    await saveThumbnail({
+      imageUrl,
+      model,
+      prompt,
+      referenceImageUrls,
+      userId: session.user.id,
+    });
     return Response.json({ imageUrl });
   } catch (error) {
     const message =

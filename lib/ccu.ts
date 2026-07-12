@@ -215,7 +215,7 @@ export async function captureCcuSnapshot(now: Date = new Date()) {
   );
 
   for (const batch of chunkArray(snapshotRows, SNAPSHOT_CHUNK_SIZE)) {
-    await db.insert(gameCcu).values(batch);
+    await db.insert(gameCcu).values(batch).onConflictDoNothing();
   }
 
   await updateGameMetrics(metricsByUniverseId);

@@ -46,6 +46,7 @@ pub struct MemoryFileSystem {
     source: PathBuf,
     written_folders: BTreeSet<String>,
     zip: ZipWriter<Cursor<Vec<u8>>>,
+    files: BTreeMap<String, Vec<u8>>,
 }
 
 impl MemoryFileSystem {
@@ -55,6 +56,7 @@ impl MemoryFileSystem {
             source: PathBuf::from(SRC),
             written_folders: BTreeSet::new(),
             zip: ZipWriter::new(Cursor::new(Vec::new())),
+            files: BTreeMap::new(),
         }
     }
 
@@ -68,7 +70,7 @@ impl MemoryFileSystem {
             .expect("couldn't add directory to zip");
     }
 
-    pub fn into_zip(mut self) -> Result<Vec<u8>, String> {
+    pub fn into_output(mut self) -> Result<(Vec<u8>, BTreeMap<String, Vec<u8>>), String> {
         let contents =
             serde_json::to_string_pretty(&self.project).expect("couldn't serialize project");
         self.zip
@@ -76,9 +78,11 @@ impl MemoryFileSystem {
             .map_err(|error| error.to_string())?;
         std::io::Write::write_all(&mut self.zip, contents.as_bytes())
             .map_err(|error| error.to_string())?;
+        self.files
+            .insert("default.project.json".to_string(), contents.into_bytes());
 
         let cursor = self.zip.finish().map_err(|error| error.to_string())?;
-        Ok(cursor.into_inner())
+        Ok((cursor.into_inner(), self.files))
     }
 }
 
@@ -112,14 +116,16 @@ impl InstructionReader for MemoryFileSystem {
                 if let Some(parent) = self.source.join(&filename).parent() {
                     self.ensure_folder(parent);
                 }
+                let zip_path = to_zip_path(&self.source.join(&filename));
                 self.zip
-                    .start_file(to_zip_path(&self.source.join(&filename)), FileOptions::default())
+                    .start_file(zip_path.clone(), FileOptions::default())
                     .unwrap_or_else(|error| {
                         panic!("can't create file {:?}: {:?}", filename, error)
                     });
                 std::io::Write::write_all(&mut self.zip, &contents).unwrap_or_else(|error| {
                     panic!("can't write to file {:?} due to {:?}", filename, error)
                 });
+                self.files.insert(zip_path, contents.into_owned());
             }
 
             Instruction::CreateFolder { folder } => {

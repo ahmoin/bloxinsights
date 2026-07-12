@@ -20,12 +20,14 @@ struct TreeIterator<'a, I: InstructionReader + ?Sized> {
     instruction_reader: &'a mut I,
     path: &'a Path,
     tree: &'a WeakDom,
+    exclude_init_meta: bool,
 }
 
 fn repr_instance<'a>(
     base: &'a Path,
     child: &'a Instance,
     has_scripts: &'a HashMap<Ref, bool>,
+    exclude_init_meta: bool,
 ) -> Option<(Vec<Instruction<'a>>, Cow<'a, Path>)> {
     if has_scripts.get(&child.referent()) != Some(&true) {
         return None;
@@ -36,25 +38,23 @@ fn repr_instance<'a>(
             let folder_path = base.join(&child.name);
             let owned: Cow<'a, Path> = Cow::Owned(folder_path);
             let clone = owned.clone();
-            Some((
-                vec![
-                    Instruction::CreateFolder { folder: clone },
-                    Instruction::CreateFile {
-                        filename: Cow::Owned(owned.join("init.meta.json")),
-                        contents: Cow::Owned(
-                            serde_json::to_string_pretty(&MetaFile {
-                                class_name: None,
-                                // properties: BTreeMap::new(),
-                                ignore_unknown_instances: true,
-                            })
-                            .unwrap()
-                            .as_bytes()
-                            .into(),
-                        ),
-                    },
-                ],
-                owned,
-            ))
+            let mut instructions = vec![Instruction::CreateFolder { folder: clone }];
+            if !exclude_init_meta {
+                instructions.push(Instruction::CreateFile {
+                    filename: Cow::Owned(owned.join("init.meta.json")),
+                    contents: Cow::Owned(
+                        serde_json::to_string_pretty(&MetaFile {
+                            class_name: None,
+                            // properties: BTreeMap::new(),
+                            ignore_unknown_instances: true,
+                        })
+                        .unwrap()
+                        .as_bytes()
+                        .into(),
+                    ),
+                });
+            }
+            Some((instructions, owned))
         }
 
         "Script" | "LocalScript" | "ModuleScript" => {
@@ -65,7 +65,7 @@ fn repr_instance<'a>(
                 _ => unreachable!(),
             };
 
-            let source = match child.properties.get("Source").expect("no Source") {
+            let source = match child.properties.get(&ustr::ustr("Source")).expect("no Source") {
                 Variant::String(value) => value,
                 _ => unreachable!(),
             }
@@ -120,26 +120,26 @@ fn repr_instance<'a>(
                         folder_path,
                     )),
 
-                    0 => Some((
-                        vec![
-                            Instruction::CreateFile {
-                                filename: Cow::Owned(
-                                    base.join(format!("{}{}.lua", child.name, extension)),
-                                ),
-                                contents: Cow::Borrowed(source),
-                            },
-                            Instruction::CreateFile {
+                    0 => {
+                        let mut instructions = vec![Instruction::CreateFile {
+                            filename: Cow::Owned(
+                                base.join(format!("{}{}.lua", child.name, extension)),
+                            ),
+                            contents: Cow::Borrowed(source),
+                        }];
+                        if !exclude_init_meta {
+                            instructions.push(Instruction::CreateFile {
                                 filename: Cow::Owned(
                                     base.join(format!("{}.meta.json", child.name)),
                                 ),
                                 contents: meta_contents,
-                            },
-                        ],
-                        Cow::Borrowed(base),
-                    )),
+                            });
+                        }
+                        Some((instructions, Cow::Borrowed(base)))
+                    }
 
-                    _ => Some((
-                        vec![
+                    _ => {
+                        let mut instructions = vec![
                             Instruction::CreateFolder {
                                 folder: folder_path.clone(),
                             },
@@ -149,20 +149,26 @@ fn repr_instance<'a>(
                                 ),
                                 contents: Cow::Borrowed(source),
                             },
-                            Instruction::CreateFile {
+                        ];
+                        if !exclude_init_meta {
+                            instructions.push(Instruction::CreateFile {
                                 filename: Cow::Owned(folder_path.join("init.meta.json")),
                                 contents: meta_contents,
-                            },
-                        ],
-                        folder_path,
-                    )),
+                            });
+                        }
+                        Some((instructions, folder_path))
+                    }
                 }
             }
         }
 
         other_class => {
             // When all else fails, we can make a meta folder if there's scripts in it
-            match rbx_reflection_database::get().classes.get(other_class) {
+            match rbx_reflection_database::get()
+                .expect("couldn't load reflection database")
+                .classes
+                .get(other_class)
+            {
                 Some(reflected) => {
                     let treat_as_service = RESPECTED_SERVICES.contains(other_class);
                     // Don't represent services not in respected-services
@@ -203,7 +209,7 @@ fn repr_instance<'a>(
             // If there are scripts, we'll need to make a .meta.json folder
             let folder_path: Cow<'a, Path> = Cow::Owned(base.join(&child.name));
             let meta = MetaFile {
-                class_name: Some(child.class.clone()),
+                class_name: Some(child.class.to_string()),
                 // properties: properties.into_iter().collect(),
                 ignore_unknown_instances: true,
             };
@@ -248,7 +254,7 @@ impl<'a, I: InstructionReader + ?Sized> TreeIterator<'a, I> {
                     instructions.push(Instruction::AddToTree {
                         name: child.name.clone(),
                         partition: TreePartition {
-                            class_name: child.class.clone(),
+                            class_name: child.class.to_string(),
                             children: child
                                 .children()
                                 .iter()
@@ -272,7 +278,7 @@ impl<'a, I: InstructionReader + ?Sized> TreeIterator<'a, I> {
 
                 (instructions, folder_path)
             } else {
-                match repr_instance(&self.path, child, has_scripts) {
+                match repr_instance(&self.path, child, has_scripts, self.exclude_init_meta) {
                     Some((instructions_to_create_base, path)) => {
                         (instructions_to_create_base, path)
                     }
@@ -287,6 +293,7 @@ impl<'a, I: InstructionReader + ?Sized> TreeIterator<'a, I> {
                 instruction_reader: self.instruction_reader,
                 path: &path,
                 tree: self.tree,
+                exclude_init_meta: self.exclude_init_meta,
             }
             .visit_instructions(child, has_scripts);
         }
@@ -319,7 +326,11 @@ fn check_has_scripts(
     result
 }
 
-pub fn process_instructions(tree: &WeakDom, instruction_reader: &mut dyn InstructionReader) {
+pub fn process_instructions(
+    tree: &WeakDom,
+    instruction_reader: &mut dyn InstructionReader,
+    exclude_init_meta: bool,
+) {
     let root = tree.root_ref();
     let root_instance = tree.get_by_ref(root).expect("fake root id?");
     let path = PathBuf::new();
@@ -331,6 +342,7 @@ pub fn process_instructions(tree: &WeakDom, instruction_reader: &mut dyn Instruc
         instruction_reader,
         path: &path,
         tree,
+        exclude_init_meta,
     }
     .visit_instructions(&root_instance, &has_scripts);
 

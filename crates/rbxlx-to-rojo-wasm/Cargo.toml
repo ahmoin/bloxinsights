@@ -8,16 +8,18 @@ crate-type = ["cdylib"]
 
 [dependencies]
 console_error_panic_hook = "0.1"
+js-sys = "0.3"
 lazy_static = "1.4"
 log = "0.4"
-rbx_binary = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
-rbx_dom_weak = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
-rbx_reflection = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
-rbx_reflection_database = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
-rbx_xml = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
-rmp = "=0.8.10"
+rbx_binary = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "f96e7383aea61730993aabb2c8e7192dd3e19b21" }
+rbx_dom_weak = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "f96e7383aea61730993aabb2c8e7192dd3e19b21" }
+rbx_reflection = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "f96e7383aea61730993aabb2c8e7192dd3e19b21" }
+rbx_reflection_database = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "f96e7383aea61730993aabb2c8e7192dd3e19b21" }
+rbx_xml = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "f96e7383aea61730993aabb2c8e7192dd3e19b21" }
+rmp = "0.8.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+ustr = "1.1"
 wasm-bindgen = "=0.2.100"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 

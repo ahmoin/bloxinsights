@@ -227,7 +227,8 @@ export interface GameMetrics {
 }
 
 async function fetchGameMetricsBatch(
-  universeIds: number[]
+  universeIds: number[],
+  attempt = 1
 ): Promise<Map<number, GameMetrics>> {
   const metricsByUniverseId = new Map<number, GameMetrics>();
 
@@ -236,6 +237,10 @@ async function fetchGameMetricsBatch(
       `${GAMES_API_URL}?universeIds=${universeIds.join(",")}`,
       { cache: "no-store" }
     );
+    if (response.status === HTTP_TOO_MANY_REQUESTS && attempt < MAX_ATTEMPTS) {
+      await sleep(RATE_LIMIT_WAIT_MS);
+      return await fetchGameMetricsBatch(universeIds, attempt + 1);
+    }
     if (!response.ok) {
       return metricsByUniverseId;
     }

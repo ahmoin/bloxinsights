@@ -47,6 +47,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:wasm": "node scripts/build-wasm.mjs",
     "start": "next start",
     "check": "ultracite check",
     "fix": "ultracite fix",

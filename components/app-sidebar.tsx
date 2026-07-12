@@ -12,6 +12,7 @@ import {
   SearchIcon,
   Settings2Icon,
   TrendingUpIcon,
+  WrenchIcon,
 } from "lucide-react";
 import Link from "next/link";
 import type { ComponentProps } from "react";
@@ -19,6 +20,7 @@ import { Icons } from "@/components/icons";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavThumbnails } from "@/components/nav-thumbnails";
+import { NavTools } from "@/components/nav-tools";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -93,6 +95,13 @@ const data = {
       icon: <DramaIcon />,
     },
   ],
+  tools: [
+    {
+      name: "RBXLX to Rojo",
+      url: "/rbxlx-to-rojo",
+      icon: <WrenchIcon />,
+    },
+  ],
 };
 
 export function AppSidebar({
@@ -123,6 +132,7 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavThumbnails items={data.thumbnails} />
+        <NavTools items={data.tools} />
         <NavSecondary className="mt-auto" items={data.navSecondary} />
       </SidebarContent>
       <SidebarFooter>

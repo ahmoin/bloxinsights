@@ -8,6 +8,7 @@ import {
   storeReferenceImage,
   THUMBNAIL_MODELS,
   type ThumbnailModelId,
+  toImageProxyUrl,
 } from "@/lib/thumbnails";
 
 const MAX_REFERENCE_IMAGES = 4;
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const [referenceImages, referenceImageUrls] = await Promise.all([
+    const [referenceImages, referenceImagePaths] = await Promise.all([
       Promise.all(referenceImageFiles.map(fileToDataUri)),
       Promise.all(
         referenceImageFiles.map((file) =>
@@ -58,15 +59,15 @@ export async function POST(request: Request) {
       referenceImages,
       model,
     });
-    const imageUrl = await storeGeneratedImage(replicateUrl, session.user.id);
+    const imagePath = await storeGeneratedImage(replicateUrl, session.user.id);
     await saveThumbnail({
-      imageUrl,
+      imagePath,
       model,
       prompt,
-      referenceImageUrls,
+      referenceImagePaths,
       userId: session.user.id,
     });
-    return Response.json({ imageUrl });
+    return Response.json({ imageUrl: toImageProxyUrl(imagePath) });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to generate thumbnail";

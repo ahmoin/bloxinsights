@@ -1,0 +1,35 @@
+[package]
+name = "rbxlx-to-rojo-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1"
+lazy_static = "1.4"
+log = "0.4"
+rbx_binary = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
+rbx_dom_weak = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
+rbx_reflection = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
+rbx_reflection_database = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
+rbx_xml = { git = "https://github.com/rojo-rbx/rbx-dom/", rev = "05fd11f18e05fa68c1c79aa5ef74a23ab4845242" }
+rmp = "=0.8.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasm-bindgen = "=0.2.100"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
+# Forces feature unification so uuid's (transitive, via rbx_dom_weak) rand-based
+# v4 generator uses getrandom through wasm-bindgen instead of a native thread_rng.
+rand = { version = "=0.7.3", features = ["wasm-bindgen"] }
+uuid = { version = "=0.8.2", features = ["wasm-bindgen"] }
+
+[profile.release]
+opt-level = "s"
+lto = true

@@ -128,6 +128,10 @@ export async function generateThumbnail(
   return file.url().toString();
 }
 
+export function toImageProxyUrl(path: string): string {
+  return `/api/thumbnails/image?path=${encodeURIComponent(path)}`;
+}
+
 export async function storeGeneratedImage(
   replicateUrl: string,
   userId: string
@@ -137,9 +141,9 @@ export async function storeGeneratedImage(
   const result = await put(
     `thumbnails/${userId}/${randomUUID()}.png`,
     imageBlob,
-    { access: "public" }
+    { access: "private" }
   );
-  return result.url;
+  return result.pathname;
 }
 
 export async function storeReferenceImage(
@@ -149,16 +153,16 @@ export async function storeReferenceImage(
   const result = await put(
     `thumbnails/${userId}/references/${randomUUID()}-${file.name}`,
     file,
-    { access: "public" }
+    { access: "private" }
   );
-  return result.url;
+  return result.pathname;
 }
 
 export interface SaveThumbnailInput {
-  imageUrl: string;
+  imagePath: string;
   model: ThumbnailModelId;
   prompt: string;
-  referenceImageUrls: string[];
+  referenceImagePaths: string[];
   userId: string;
 }
 

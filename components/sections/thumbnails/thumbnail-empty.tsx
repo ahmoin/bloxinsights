@@ -1,7 +1,7 @@
 import { PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CreateThumbnailDialog } from "@/components/create-thumbnail-dialog";
+import { CreateThumbnailDialog } from "@/components/sections/thumbnails/create-thumbnail-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Empty,

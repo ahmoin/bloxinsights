@@ -1,7 +1,7 @@
 import { DramaIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/app-shell";
-import { ThumbnailEmpty } from "@/components/thumbnail-empty";
+import { ThumbnailEmpty } from "@/components/sections/thumbnails/thumbnail-empty";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {

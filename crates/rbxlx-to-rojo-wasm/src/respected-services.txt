@@ -1,0 +1,15 @@
+Chat
+Lighting
+LocalizationService
+ReplicatedFirst
+ReplicatedStorage
+ServerScriptService
+ServerStorage
+SoundService
+StarterCharacterScripts
+StarterGui
+StarterPack
+StarterPlayerScripts
+Teams
+TestService
+Workspace

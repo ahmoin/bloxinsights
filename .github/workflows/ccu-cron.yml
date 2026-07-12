@@ -1,8 +1,6 @@
 name: CCU Cron
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:

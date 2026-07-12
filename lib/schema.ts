@@ -166,8 +166,8 @@ export const thumbnail = sqliteTable(
     userId: text("userId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    imageUrl: text("imageUrl").notNull(),
-    referenceImageUrls: text("referenceImageUrls", { mode: "json" })
+    imagePath: text("imagePath").notNull(),
+    referenceImagePaths: text("referenceImagePaths", { mode: "json" })
       .$type<string[]>()
       .notNull()
       .default([]),

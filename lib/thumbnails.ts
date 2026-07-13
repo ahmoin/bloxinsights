@@ -1,18 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { openrouter } from "@openrouter/ai-sdk-provider";
 import { put } from "@vercel/blob";
-import { generateObject } from "ai";
-import Replicate, { type FileOutput } from "replicate";
+import { generateImage, generateObject } from "ai";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { thumbnail } from "@/lib/schema";
 
 const THUMBNAIL_ASPECT_RATIO = "16:9";
-const THUMBNAIL_RESOLUTION = "1K";
 const PROMPT_WRITER_MODEL = "google/gemini-2.5-flash";
 
 export const THUMBNAIL_MODELS = {
-  fast: "google/nano-banana-2",
+  fast: "google/gemini-3.1-flash-lite-image",
   quality: "openai/gpt-image-2",
 } as const;
 
@@ -68,64 +66,28 @@ export async function buildThumbnailPrompt(
   return object.prompt;
 }
 
-let client: Replicate | null = null;
-
-function getReplicateClient() {
-  if (client) {
-    return client;
-  }
-  const auth = process.env.REPLICATE_API_TOKEN;
-  if (!auth) {
-    throw new Error("REPLICATE_API_TOKEN is not set");
-  }
-  client = new Replicate({ auth });
-  return client;
-}
-
 export interface GenerateThumbnailInput {
   model?: ThumbnailModelId;
   prompt: string;
   referenceImages?: string[];
 }
 
-function buildPromptInput({
-  prompt,
-  referenceImages,
-  model = "fast",
-}: GenerateThumbnailInput) {
-  const hasReferenceImages = referenceImages && referenceImages.length > 0;
-
-  if (model === "quality") {
-    return hasReferenceImages
-      ? { prompt, input_images: referenceImages }
-      : { prompt };
-  }
-
-  return {
-    prompt,
-    aspect_ratio: THUMBNAIL_ASPECT_RATIO,
-    resolution: THUMBNAIL_RESOLUTION,
-    ...(hasReferenceImages ? { image_input: referenceImages } : {}),
-  };
-}
-
 export async function generateThumbnail(
   input: GenerateThumbnailInput
 ): Promise<string> {
-  const replicate = getReplicateClient();
   const modelId = THUMBNAIL_MODELS[input.model ?? "fast"];
-  const output = await replicate.run(modelId, {
-    input: buildPromptInput(input),
-    wait: { mode: "block" },
+  const hasReferenceImages =
+    input.referenceImages && input.referenceImages.length > 0;
+
+  const { image } = await generateImage({
+    aspectRatio: THUMBNAIL_ASPECT_RATIO,
+    model: openrouter.imageModel(modelId),
+    prompt: hasReferenceImages
+      ? { images: input.referenceImages ?? [], text: input.prompt }
+      : input.prompt,
   });
 
-  const file = (Array.isArray(output) ? output[0] : output) as
-    | FileOutput
-    | undefined;
-  if (!file || typeof file.url !== "function") {
-    throw new Error("Replicate did not return an image");
-  }
-  return file.url().toString();
+  return `data:${image.mediaType};base64,${image.base64}`;
 }
 
 export function toImageProxyUrl(path: string): string {
@@ -133,10 +95,10 @@ export function toImageProxyUrl(path: string): string {
 }
 
 export async function storeGeneratedImage(
-  replicateUrl: string,
+  imageDataUri: string,
   userId: string
 ): Promise<string> {
-  const response = await fetch(replicateUrl);
+  const response = await fetch(imageDataUri);
   const imageBlob = await response.blob();
   const result = await put(
     `thumbnails/${userId}/${randomUUID()}.png`,

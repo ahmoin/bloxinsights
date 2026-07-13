@@ -61,6 +61,23 @@ function formatElapsedTime(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
+function formatThumbnailFileName(date: Date): string {
+  const datePart = date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const timePart = date
+    .toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      hour12: true,
+      minute: "2-digit",
+      second: "2-digit",
+    })
+    .replace(/:/g, "_");
+  return `Bloxinsights Thumbnail ${datePart}, ${timePart}.png`;
+}
+
 interface ReferenceImage {
   file: File;
   previewUrl: string;
@@ -118,7 +135,7 @@ export function CreateThumbnailDialog() {
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = "thumbnail.png";
+      link.download = formatThumbnailFileName(new Date());
       link.click();
       URL.revokeObjectURL(blobUrl);
     } catch {

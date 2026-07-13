@@ -56,12 +56,15 @@ export async function POST(request: Request) {
         )
       ),
     ]);
-    const replicateUrl = await generateThumbnail({
+    const generatedImage = await generateThumbnail({
       prompt,
       referenceImages,
       model,
     });
-    const imagePath = await storeGeneratedImage(replicateUrl, session.user.id);
+    const imagePath = await storeGeneratedImage(
+      generatedImage,
+      session.user.id
+    );
     await saveThumbnail({
       imagePath,
       model,

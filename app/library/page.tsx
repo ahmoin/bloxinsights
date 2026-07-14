@@ -57,7 +57,7 @@ export default async function LibraryPage() {
                 unoptimized
                 width={384}
               />
-              <p className="line-clamp-2 overflow-hidden px-3 pb-3 text-muted-foreground text-sm">
+              <p className="px-3 pb-3 text-muted-foreground text-sm">
                 {item.prompt}
               </p>
             </a>

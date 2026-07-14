@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { GamesColumnsMenu } from "@/components/sections/games/games-columns-menu";
-import { GamesTable } from "@/components/sections/games/games-table";
+import { GamesTable } from "@/components/sections/tables/games-table";
 import {
   Pagination,
   PaginationContent,

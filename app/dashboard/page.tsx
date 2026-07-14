@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ChartAreaInteractive } from "@/components/sections/dashboard/chart-area-interactive";
 import { SectionCards } from "@/components/sections/dashboard/section-cards";
-import { GamesTable } from "@/components/sections/games/games-table";
+import { GamesTable } from "@/components/sections/tables/games-table";
 import { Button } from "@/components/ui/button";
 import {
   getGamesList,

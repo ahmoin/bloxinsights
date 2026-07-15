@@ -18,8 +18,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { GamesListSort, GamesListSortField, TopGame } from "@/lib/ccu";
+import { ColumnFilter } from "./column-filter";
 
 const GAME_ICON_SIZE = 40;
+
+export type GamesListFilters = Partial<
+  Record<GamesListSortField, { max?: number; min?: number }>
+>;
 
 function sortDirections(field: GamesListSortField) {
   return { asc: field, desc: `-${field}` as GamesListSort };
@@ -28,16 +33,40 @@ function sortDirections(field: GamesListSortField) {
 function SortableHead({
   children,
   currentSort,
+  filters,
   hrefForSort,
+  onFilterChange,
   sortKey,
 }: {
   children: ReactNode;
   currentSort?: GamesListSort;
+  filters?: GamesListFilters;
   hrefForSort?: (field: GamesListSortField) => string;
+  onFilterChange?: (
+    field: GamesListSortField,
+    min?: number,
+    max?: number
+  ) => void;
   sortKey: GamesListSortField;
 }) {
+  const filter = onFilterChange && (
+    <ColumnFilter
+      max={filters?.[sortKey]?.max}
+      min={filters?.[sortKey]?.min}
+      onApply={(min, max) => onFilterChange(sortKey, min, max)}
+      onClear={() => onFilterChange(sortKey, undefined, undefined)}
+    />
+  );
+
   if (!hrefForSort) {
-    return <TableHead className="text-right">{children}</TableHead>;
+    return (
+      <TableHead className="text-right">
+        <div className="flex items-center justify-end gap-1">
+          {children}
+          {filter}
+        </div>
+      </TableHead>
+    );
   }
 
   const directions = sortDirections(sortKey);
@@ -45,17 +74,20 @@ function SortableHead({
   const isDesc = currentSort === directions.desc;
   return (
     <TableHead className="text-right">
-      <Link
-        className="inline-flex items-center justify-end gap-1"
-        href={hrefForSort(sortKey)}
-      >
-        {children}
-        {isAsc && <ArrowUpIcon className="size-3.5" />}
-        {isDesc && <ArrowDownIcon className="size-3.5" />}
-        {!(isAsc || isDesc) && (
-          <ChevronsUpDownIcon className="size-3.5 text-muted-foreground" />
-        )}
-      </Link>
+      <div className="flex items-center justify-end gap-1">
+        <Link
+          className="inline-flex items-center justify-end gap-1"
+          href={hrefForSort(sortKey)}
+        >
+          {children}
+          {isAsc && <ArrowUpIcon className="size-3.5" />}
+          {isDesc && <ArrowDownIcon className="size-3.5" />}
+          {!(isAsc || isDesc) && (
+            <ChevronsUpDownIcon className="size-3.5 text-muted-foreground" />
+          )}
+        </Link>
+        {filter}
+      </div>
     </TableHead>
   );
 }
@@ -82,13 +114,21 @@ function RankChangeCell({ rankChange }: { rankChange: number | null }) {
 
 export function GamesTable({
   currentSort,
+  filters,
   games,
   hrefForSort,
+  onFilterChange,
   visibleColumns,
 }: {
   currentSort?: GamesListSort;
+  filters?: GamesListFilters;
   games: TopGame[];
   hrefForSort?: (field: GamesListSortField) => string;
+  onFilterChange?: (
+    field: GamesListSortField,
+    min?: number,
+    max?: number
+  ) => void;
   visibleColumns: Set<string>;
 }) {
   const columnCount = 3 + visibleColumns.size;
@@ -101,7 +141,9 @@ export function GamesTable({
           <TableHead>Game</TableHead>
           <SortableHead
             currentSort={currentSort}
+            filters={filters}
             hrefForSort={hrefForSort}
+            onFilterChange={onFilterChange}
             sortKey="playing"
           >
             Players (CCU)
@@ -109,7 +151,9 @@ export function GamesTable({
           {visibleColumns.has("rankChange") && (
             <SortableHead
               currentSort={currentSort}
+              filters={filters}
               hrefForSort={hrefForSort}
+              onFilterChange={onFilterChange}
               sortKey="rank_change_day"
             >
               Rank Change
@@ -118,7 +162,9 @@ export function GamesTable({
           {visibleColumns.has("visits") && (
             <SortableHead
               currentSort={currentSort}
+              filters={filters}
               hrefForSort={hrefForSort}
+              onFilterChange={onFilterChange}
               sortKey="visits"
             >
               Visits
@@ -127,7 +173,9 @@ export function GamesTable({
           {visibleColumns.has("favorites") && (
             <SortableHead
               currentSort={currentSort}
+              filters={filters}
               hrefForSort={hrefForSort}
+              onFilterChange={onFilterChange}
               sortKey="favorites"
             >
               Favorites
@@ -136,7 +184,9 @@ export function GamesTable({
           {visibleColumns.has("upVotes") && (
             <SortableHead
               currentSort={currentSort}
+              filters={filters}
               hrefForSort={hrefForSort}
+              onFilterChange={onFilterChange}
               sortKey="up_votes"
             >
               Upvotes
@@ -145,7 +195,9 @@ export function GamesTable({
           {visibleColumns.has("downVotes") && (
             <SortableHead
               currentSort={currentSort}
+              filters={filters}
               hrefForSort={hrefForSort}
+              onFilterChange={onFilterChange}
               sortKey="down_votes"
             >
               Downvotes

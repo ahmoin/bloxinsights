@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { GamesColumnsMenu } from "@/components/sections/games/games-columns-menu";
-import { GamesTable } from "@/components/sections/tables/games-table";
+import { GamesFilterableTable } from "@/components/sections/tables/games-filterable-table";
 import {
   Pagination,
   PaginationContent,
@@ -11,6 +11,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
+  type GamesListFilters,
   type GamesListSort,
   type GamesListSortField,
   getGamesList,
@@ -43,22 +44,16 @@ function isGamesListSort(value: string | undefined): value is GamesListSort {
   return SORT_FIELDS.has(field as GamesListSortField);
 }
 
-function nextSort(
-  field: GamesListSortField,
-  currentSort: GamesListSort
-): GamesListSort {
-  const desc = `-${field}` as GamesListSort;
-  return currentSort === desc ? field : desc;
-}
-
 function buildGamesHref({
   columns,
+  filters,
   page,
   pageSize,
   rankMax,
   sort,
 }: {
   columns: string[];
+  filters: GamesListFilters;
   page: number;
   pageSize: number;
   rankMax?: number;
@@ -77,7 +72,37 @@ function buildGamesHref({
   if (columns.length > 0) {
     query.set("columns", columns.join(","));
   }
+  for (const field of SORT_FIELDS) {
+    const range = filters[field];
+    if (range?.min !== undefined) {
+      query.set(`f_${field}_min`, String(range.min));
+    }
+    if (range?.max !== undefined) {
+      query.set(`f_${field}_max`, String(range.max));
+    }
+  }
   return `/games?${query.toString()}`;
+}
+
+function parseFilters(
+  params: Record<string, string | undefined>
+): GamesListFilters {
+  const filters: GamesListFilters = {};
+  for (const field of SORT_FIELDS) {
+    const min = Number(params[`f_${field}_min`]);
+    const max = Number(params[`f_${field}_max`]);
+    const range: { max?: number; min?: number } = {};
+    if (params[`f_${field}_min`] !== undefined && Number.isFinite(min)) {
+      range.min = min;
+    }
+    if (params[`f_${field}_max`] !== undefined && Number.isFinite(max)) {
+      range.max = max;
+    }
+    if (range.min !== undefined || range.max !== undefined) {
+      filters[field] = range;
+    }
+  }
+  return filters;
 }
 
 function parsePageSize(value: string | undefined): number {
@@ -144,13 +169,15 @@ function buildPageTokens(page: number, pageCount: number): PageToken[] {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{
-    columns?: string;
-    page?: string;
-    page_size?: string;
-    rank_max?: string;
-    sort?: string;
-  }>;
+  searchParams: Promise<
+    {
+      columns?: string;
+      page?: string;
+      page_size?: string;
+      rank_max?: string;
+      sort?: string;
+    } & Record<string, string | undefined>
+  >;
 }) {
   const params = await searchParams;
   const sort = isGamesListSort(params.sort) ? params.sort : DEFAULT_SORT;
@@ -159,8 +186,10 @@ export default async function Page({
   const page = parsePage(params.page);
   const columns = parseColumns(params.columns);
   const visibleColumns = new Set(columns);
+  const filters = parseFilters(params);
 
   const { games, total } = await getGamesList({
+    filters,
     page,
     pageSize,
     rankMax: validRankMax,
@@ -176,20 +205,32 @@ export default async function Page({
   const hrefFor = (targetPage: number) =>
     buildGamesHref({
       columns,
+      filters,
       page: targetPage,
       pageSize,
       rankMax: validRankMax,
       sort,
     });
 
-  const hrefForSort = (field: GamesListSortField) =>
-    buildGamesHref({
-      columns,
-      page: 1,
-      pageSize,
-      rankMax: validRankMax,
-      sort: nextSort(field, sort),
-    });
+  const baseQuery: Record<string, string> = { sort };
+  if (pageSize !== DEFAULT_PAGE_SIZE) {
+    baseQuery.page_size = String(pageSize);
+  }
+  if (validRankMax) {
+    baseQuery.rank_max = String(validRankMax);
+  }
+  if (columns.length > 0) {
+    baseQuery.columns = columns.join(",");
+  }
+  for (const field of SORT_FIELDS) {
+    const range = filters[field];
+    if (range?.min !== undefined) {
+      baseQuery[`f_${field}_min`] = String(range.min);
+    }
+    if (range?.max !== undefined) {
+      baseQuery[`f_${field}_max`] = String(range.max);
+    }
+  }
 
   return (
     <AppShell title="Games">
@@ -198,10 +239,11 @@ export default async function Page({
           <GamesColumnsMenu visibleColumns={columns} />
         </div>
         <div className="overflow-hidden rounded-lg border px-4 lg:px-6">
-          <GamesTable
+          <GamesFilterableTable
+            baseQuery={baseQuery}
             currentSort={sort}
+            filters={filters}
             games={games}
-            hrefForSort={hrefForSort}
             visibleColumns={visibleColumns}
           />
         </div>

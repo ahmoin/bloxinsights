@@ -4,6 +4,7 @@ import { SearchIcon, TrendingUpIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ColumnFilter } from "@/components/sections/tables/column-filter";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,16 +21,31 @@ const GAME_ICON_SIZE = 40;
 
 export function TrendingTable({ topMovers }: { topMovers: TopMover[] }) {
   const [query, setQuery] = useState("");
+  const [rankShiftMin, setRankShiftMin] = useState<number | undefined>(
+    undefined
+  );
+  const [rankShiftMax, setRankShiftMax] = useState<number | undefined>(
+    undefined
+  );
 
   const filteredMovers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return topMovers;
-    }
-    return topMovers.filter((entry) =>
-      entry.name.toLowerCase().includes(normalizedQuery)
-    );
-  }, [topMovers, query]);
+    return topMovers.filter((entry) => {
+      if (
+        normalizedQuery &&
+        !entry.name.toLowerCase().includes(normalizedQuery)
+      ) {
+        return false;
+      }
+      if (rankShiftMin !== undefined && entry.rankShift < rankShiftMin) {
+        return false;
+      }
+      if (rankShiftMax !== undefined && entry.rankShift > rankShiftMax) {
+        return false;
+      }
+      return true;
+    });
+  }, [topMovers, query, rankShiftMin, rankShiftMax]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,7 +68,23 @@ export function TrendingTable({ topMovers }: { topMovers: TopMover[] }) {
             <TableRow>
               <TableHead className="w-12">Rank</TableHead>
               <TableHead>Game</TableHead>
-              <TableHead className="text-right">Rank Shift</TableHead>
+              <TableHead className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  Rank Shift
+                  <ColumnFilter
+                    max={rankShiftMax}
+                    min={rankShiftMin}
+                    onApply={(min, max) => {
+                      setRankShiftMin(min);
+                      setRankShiftMax(max);
+                    }}
+                    onClear={() => {
+                      setRankShiftMin(undefined);
+                      setRankShiftMax(undefined);
+                    }}
+                  />
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

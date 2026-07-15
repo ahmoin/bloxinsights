@@ -3,7 +3,10 @@
 import { SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { GamesTable } from "@/components/sections/tables/games-table";
+import {
+  type GamesListFilters,
+  GamesTable,
+} from "@/components/sections/tables/games-table";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,7 +15,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { GamesListSort, TopGame } from "@/lib/ccu";
+import type { GamesListSort, GamesListSortField, TopGame } from "@/lib/ccu";
+
+function getGamesListSortFieldValue(
+  entry: TopGame,
+  field: GamesListSortField
+): number {
+  switch (field) {
+    case "created":
+      return entry.dateCreated ? entry.dateCreated.getTime() : 0;
+    case "down_votes":
+      return entry.downVotes;
+    case "favorites":
+      return entry.favoritedCount;
+    case "playing":
+      return entry.playerCount;
+    case "rank_change_day":
+      return entry.rankChange ?? 0;
+    case "up_votes":
+      return entry.upVotes;
+    case "visits":
+      return entry.visits;
+    default:
+      return 0;
+  }
+}
+
+function matchesGamesListFilters(
+  entry: TopGame,
+  filters: GamesListFilters
+): boolean {
+  for (const field of Object.keys(filters) as GamesListSortField[]) {
+    const range = filters[field];
+    if (!range) {
+      continue;
+    }
+    const value = getGamesListSortFieldValue(entry, field);
+    if (range.min !== undefined && value < range.min) {
+      return false;
+    }
+    if (range.max !== undefined && value > range.max) {
+      return false;
+    }
+  }
+  return true;
+}
 
 const SORT_OPTIONS: { label: string; value: GamesListSort }[] = [
   { label: "By Players (CCU)", value: "-playing" },
@@ -30,16 +77,33 @@ export function TopTable({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<GamesListFilters>({});
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return games;
-    }
-    return games.filter((entry) =>
-      entry.name.toLowerCase().includes(normalizedQuery)
+    return games.filter(
+      (entry) =>
+        (!normalizedQuery ||
+          entry.name.toLowerCase().includes(normalizedQuery)) &&
+        matchesGamesListFilters(entry, filters)
     );
-  }, [games, query]);
+  }, [games, query, filters]);
+
+  const handleFilterChange = (
+    field: GamesListSortField,
+    min?: number,
+    max?: number
+  ) => {
+    setFilters((previous) => {
+      const next = { ...previous };
+      if (min === undefined && max === undefined) {
+        delete next[field];
+      } else {
+        next[field] = { max, min };
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -72,7 +136,12 @@ export function TopTable({
         </div>
       </div>
       <div className="overflow-hidden rounded-lg border">
-        <GamesTable games={filteredGames} visibleColumns={new Set()} />
+        <GamesTable
+          filters={filters}
+          games={filteredGames}
+          onFilterChange={handleFilterChange}
+          visibleColumns={new Set()}
+        />
       </div>
     </div>
   );

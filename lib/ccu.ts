@@ -80,6 +80,30 @@ function sortRankedRows<T extends RankedGameRow>(
   });
 }
 
+export type GamesListFilters = Partial<
+  Record<GamesListSortField, { max?: number; min?: number }>
+>;
+
+function matchesFilters<T extends RankedGameRow>(
+  row: T,
+  filters: GamesListFilters
+): boolean {
+  for (const field of Object.keys(filters) as GamesListSortField[]) {
+    const range = filters[field];
+    if (!range) {
+      continue;
+    }
+    const value = getSortFieldValue(row, field);
+    if (range.min !== undefined && value < range.min) {
+      return false;
+    }
+    if (range.max !== undefined && value > range.max) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export interface GamesListResult {
   games: TopGame[];
   total: number;
@@ -412,11 +436,13 @@ async function getLatestSnapshotCount(timestamp: Date): Promise<number> {
 }
 
 export async function getGamesList({
+  filters,
   page = DEFAULT_GAMES_PAGE,
   pageSize = DEFAULT_GAMES_PAGE_SIZE,
   rankMax,
   sort,
 }: {
+  filters?: GamesListFilters;
   page?: number;
   pageSize?: number;
   rankMax?: number;
@@ -465,8 +491,12 @@ export async function getGamesList({
     sort
   );
 
+  const filtered = filters
+    ? ranked.filter((row) => matchesFilters(row, filters))
+    : ranked;
+
   const start = (page - 1) * pageSize;
-  const pageRows = ranked.slice(start, start + pageSize);
+  const pageRows = filtered.slice(start, start + pageSize);
 
   const universeIds = pageRows.map((row) => row.universeId);
   const { creatorsByUniverseId, iconsByUniverseId } =
@@ -478,7 +508,7 @@ export async function getGamesList({
     iconUrl: iconsByUniverseId.get(row.universeId) ?? null,
   }));
 
-  return { games, total: poolSize };
+  return { games, total: filtered.length };
 }
 
 export async function getPlatformCcuHistory() {

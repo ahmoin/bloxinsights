@@ -4,9 +4,9 @@ import { siteConfig } from "@/lib/config";
 
 export function SiteFooter() {
   return (
-    <footer className="3xl:fixed:bg-transparent group-has-[[data-slot=designer]]/body:hidden group-has-[[data-slot=docs]]/body:hidden group-has-[.section-soft]/body:bg-surface/40 group-has-[.docs-nav]/body:pb-20 group-has-[.docs-nav]/body:sm:pb-0 dark:bg-transparent dark:group-has-[.section-soft]/body:bg-surface/40">
+    <footer className="3xl:fixed:bg-transparent group-has-data-[slot=designer]/body:hidden group-has-data-[slot=docs]/body:hidden group-has-[.section-soft]/body:bg-surface/40 group-has-[.docs-nav]/body:pb-20 group-has-[.docs-nav]/body:sm:pb-0 dark:bg-transparent dark:group-has-[.section-soft]/body:bg-surface/40">
       <div className="container-wrapper px-4 xl:px-6">
-        <div className="flex h-(--footer-height) items-center justify-between">
+        <div className="flex items-center justify-between py-8">
           <div className="flex w-full flex-col items-center px-1 text-center text-muted-foreground text-xs leading-loose sm:text-sm">
             <div className="grid max-w-7xl grid-cols-1 gap-8 md:grid-cols-4">
               <div>
@@ -97,7 +97,7 @@ export function SiteFooter() {
                 </ul>
               </div>
             </div>
-            <div className="my-8 border-border border-t pt-8 text-center text-muted-foreground text-sm">
+            <div className="my-8 w-full border-border border-t pt-8 text-center text-muted-foreground text-sm">
               <p>&copy; 2026 {siteConfig.name}. All rights reserved.</p>
             </div>
           </div>

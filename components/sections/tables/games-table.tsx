@@ -203,6 +203,9 @@ export function GamesTable({
               Downvotes
             </SortableHead>
           )}
+          {visibleColumns.has("genre") && (
+            <TableHead className="text-right">Genre</TableHead>
+          )}
           {visibleColumns.has("created") && (
             <SortableHead
               currentSort={currentSort}
@@ -283,6 +286,11 @@ export function GamesTable({
               {visibleColumns.has("downVotes") && (
                 <TableCell className="text-right tabular-nums">
                   {entry.downVotes.toLocaleString()}
+                </TableCell>
+              )}
+              {visibleColumns.has("genre") && (
+                <TableCell className="text-right text-muted-foreground">
+                  {entry.genre ?? "–"}
                 </TableCell>
               )}
               {visibleColumns.has("created") && (

@@ -9,6 +9,7 @@ export const GAMES_METRIC_COLUMNS: GamesMetricColumn[] = [
   { key: "favorites", label: "Favorites" },
   { key: "upVotes", label: "Up Votes" },
   { key: "downVotes", label: "Down Votes" },
+  { key: "genre", label: "Genre" },
   { key: "created", label: "Created" },
 ];
 

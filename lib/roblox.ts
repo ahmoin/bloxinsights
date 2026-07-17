@@ -69,6 +69,7 @@ const gameMetricsSchema = z.object({
   created: z.string(),
   favoritedCount: z.number().default(0),
   visits: z.number().default(0),
+  genre: z.string().nullish(),
 });
 
 const gameMetricsResponseSchema = z.object({
@@ -223,6 +224,7 @@ export async function fetchGameIcons(
 export interface GameMetrics {
   dateCreated: Date;
   favoritedCount: number;
+  genre: string | null;
   visits: number;
 }
 
@@ -249,6 +251,7 @@ async function fetchGameMetricsBatch(
       metricsByUniverseId.set(entry.id, {
         dateCreated: new Date(entry.created),
         favoritedCount: entry.favoritedCount,
+        genre: entry.genre && entry.genre.length > 0 ? entry.genre : null,
         visits: entry.visits,
       });
     }

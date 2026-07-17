@@ -139,6 +139,7 @@ export interface TopGame {
   dateCreated: Date | null;
   downVotes: number;
   favoritedCount: number;
+  genre: string | null;
   iconUrl: string | null;
   name: string;
   playerCount: number;
@@ -259,6 +260,7 @@ async function updateGameMetrics(
           .set({
             dateCreated: metrics.dateCreated,
             favoritedCount: metrics.favoritedCount,
+            genre: metrics.genre,
             visits: metrics.visits,
           })
           .where(eq(game.universeId, universeId))
@@ -310,6 +312,7 @@ export async function getTopGamesByPlayers(
       dateCreated: game.dateCreated,
       downVotes: game.totalDownVotes,
       favoritedCount: game.favoritedCount,
+      genre: game.genre,
       upVotes: game.totalUpVotes,
       visits: game.visits,
     })
@@ -465,6 +468,7 @@ export async function getGamesList({
       dateCreated: game.dateCreated,
       downVotes: game.totalDownVotes,
       favoritedCount: game.favoritedCount,
+      genre: game.genre,
       upVotes: game.totalUpVotes,
       visits: game.visits,
     })

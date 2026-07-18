@@ -4,6 +4,8 @@ import { chunkArray, sleep } from "@/lib/utils";
 const EXPLORE_SORTS_URL = "https://apis.roblox.com/explore-api/v1/get-sorts";
 const GAMES_API_URL = "https://games.roblox.com/v1/games";
 const GAME_ICONS_URL = "https://thumbnails.roblox.com/v1/games/icons";
+const GAME_THUMBNAILS_URL =
+  "https://thumbnails.roblox.com/v1/games/multiget/thumbnails";
 const GAMES_BATCH_SIZE = 50;
 const FETCH_CONCURRENCY = 5;
 const HTTP_TOO_MANY_REQUESTS = 429;
@@ -92,6 +94,15 @@ const gameIconSchema = z.object({
 
 const gameIconsResponseSchema = z.object({
   data: z.array(gameIconSchema),
+});
+
+const gameThumbnailSetSchema = z.object({
+  universeId: z.number(),
+  thumbnails: z.array(z.object({ imageUrl: z.string().nullish() })).nullish(),
+});
+
+const gameThumbnailsResponseSchema = z.object({
+  data: z.array(gameThumbnailSetSchema),
 });
 
 export type ExploreGame = z.infer<typeof exploreGameSchema>;
@@ -219,6 +230,43 @@ export async function fetchGameIcons(
     // leaderboard still renders without icons
   }
   return iconsByUniverseId;
+}
+
+export async function fetchGameThumbnails(
+  universeIds: number[]
+): Promise<Map<number, string>> {
+  const thumbnailsByUniverseId = new Map<number, string>();
+  if (universeIds.length === 0) {
+    return thumbnailsByUniverseId;
+  }
+
+  const params = new URLSearchParams({
+    universeIds: universeIds.join(","),
+    countPerUniverse: "1",
+    size: "768x432",
+    format: "Png",
+    isCircular: "false",
+  });
+
+  try {
+    const response = await fetch(
+      `${GAME_THUMBNAILS_URL}?${params.toString()}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      return thumbnailsByUniverseId;
+    }
+    const data = gameThumbnailsResponseSchema.parse(await response.json());
+    for (const entry of data.data) {
+      const imageUrl = entry.thumbnails?.[0]?.imageUrl;
+      if (imageUrl) {
+        thumbnailsByUniverseId.set(entry.universeId, imageUrl);
+      }
+    }
+  } catch {
+    // mockups still render without thumbnails
+  }
+  return thumbnailsByUniverseId;
 }
 
 export interface GameMetrics {

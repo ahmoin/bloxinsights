@@ -94,7 +94,7 @@ function SortableHead({
 
 function RankChangeCell({ rankChange }: { rankChange: number | null }) {
   if (rankChange === null || rankChange === 0) {
-    return <span className="text-muted-foreground">–</span>;
+    return <span className="text-muted-foreground">-</span>;
   }
   const movedUp = rankChange > 0;
   return (
@@ -290,14 +290,14 @@ export function GamesTable({
               )}
               {visibleColumns.has("genre") && (
                 <TableCell className="text-right text-muted-foreground">
-                  {entry.genre ?? "–"}
+                  {entry.genre ?? "-"}
                 </TableCell>
               )}
               {visibleColumns.has("created") && (
                 <TableCell className="text-right text-muted-foreground">
                   {entry.dateCreated
                     ? entry.dateCreated.toLocaleDateString()
-                    : "–"}
+                    : "-"}
                 </TableCell>
               )}
             </TableRow>

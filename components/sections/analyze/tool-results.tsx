@@ -33,7 +33,7 @@ export interface PlatformStatsOutput {
 
 function RankChangeBadge({ rankChange }: { rankChange: number | null }) {
   if (rankChange === null || rankChange === 0) {
-    return <span className="text-muted-foreground">–</span>;
+    return <span className="text-muted-foreground">-</span>;
   }
   const movedUp = rankChange > 0;
   return (
@@ -98,7 +98,7 @@ export function TopGamesResult({ games }: { games: GameRow[] }) {
                 <TableCell className="text-right text-muted-foreground">
                   {entry.dateCreated
                     ? new Date(entry.dateCreated).toLocaleDateString()
-                    : "–"}
+                    : "-"}
                 </TableCell>
               )}
             </TableRow>
@@ -167,7 +167,7 @@ export function PlatformStatsResult({ current, peak }: PlatformStatsOutput) {
       <div className="rounded-lg border p-3">
         <div className="text-muted-foreground text-xs">Current CCU</div>
         <div className="font-semibold text-xl tabular-nums">
-          {current ? current.ccu.toLocaleString() : "–"}
+          {current ? current.ccu.toLocaleString() : "-"}
         </div>
       </div>
       <div className="rounded-lg border p-3">

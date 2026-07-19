@@ -78,7 +78,7 @@ export function ColumnFilter({
             placeholder="Min"
             value={draftMin}
           />
-          <span className="text-muted-foreground">–</span>
+          <span className="text-muted-foreground">-</span>
           <Input
             aria-label="Maximum value"
             inputMode="numeric"

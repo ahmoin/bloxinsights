@@ -515,6 +515,112 @@ export async function getGamesList({
   return { games, total: filtered.length };
 }
 
+export interface GenreSummary {
+  avgRating: number | null;
+  gameCount: number;
+  genre: string;
+  rank: number;
+  rankChange: number | null;
+  totalFavorites: number;
+  totalPlayers: number;
+  totalVisits: number;
+}
+
+const UNCATEGORIZED_GENRE = "Uncategorized";
+
+interface GenreAggregate {
+  gameCount: number;
+  totalDownVotes: number;
+  totalFavorites: number;
+  totalPlayers: number;
+  totalUpVotes: number;
+  totalVisits: number;
+}
+
+async function getGenreAggregates(
+  timestamp: Date
+): Promise<Map<string, GenreAggregate>> {
+  const rows = await db
+    .select({
+      downVotes: game.totalDownVotes,
+      favoritedCount: game.favoritedCount,
+      genre: game.genre,
+      playerCount: gameCcu.playerCount,
+      upVotes: game.totalUpVotes,
+      visits: game.visits,
+    })
+    .from(gameCcu)
+    .innerJoin(game, eq(game.universeId, gameCcu.universeId))
+    .where(eq(gameCcu.timestamp, timestamp));
+
+  const byGenre = new Map<string, GenreAggregate>();
+  for (const row of rows) {
+    const genre = row.genre ?? UNCATEGORIZED_GENRE;
+    const existing = byGenre.get(genre) ?? {
+      gameCount: 0,
+      totalDownVotes: 0,
+      totalFavorites: 0,
+      totalPlayers: 0,
+      totalUpVotes: 0,
+      totalVisits: 0,
+    };
+    existing.gameCount += 1;
+    existing.totalPlayers += row.playerCount;
+    existing.totalVisits += row.visits;
+    existing.totalFavorites += row.favoritedCount;
+    existing.totalUpVotes += row.upVotes;
+    existing.totalDownVotes += row.downVotes;
+    byGenre.set(genre, existing);
+  }
+  return byGenre;
+}
+
+function rankGenresByPlayers(
+  aggregates: Map<string, GenreAggregate>
+): Map<string, number> {
+  const ranked = [...aggregates.entries()].sort(
+    (a, b) => b[1].totalPlayers - a[1].totalPlayers
+  );
+  const rankByGenre = new Map<string, number>();
+  for (const [index, [genre]] of ranked.entries()) {
+    rankByGenre.set(genre, index + 1);
+  }
+  return rankByGenre;
+}
+
+export async function getGenreSummary(): Promise<GenreSummary[]> {
+  const [latest, previous] = await getLatestSnapshotTimestamps(2);
+  if (!latest) {
+    return [];
+  }
+
+  const currentAggregates = await getGenreAggregates(latest);
+  const previousRanks = previous
+    ? rankGenresByPlayers(await getGenreAggregates(previous))
+    : new Map<string, number>();
+
+  const ranked = [...currentAggregates.entries()].sort(
+    (a, b) => b[1].totalPlayers - a[1].totalPlayers
+  );
+
+  return ranked.map(([genre, aggregate], index) => {
+    const rank = index + 1;
+    const previousRank = previousRanks.get(genre);
+    const totalVotes = aggregate.totalUpVotes + aggregate.totalDownVotes;
+    return {
+      avgRating:
+        totalVotes > 0 ? (aggregate.totalUpVotes / totalVotes) * 100 : null,
+      gameCount: aggregate.gameCount,
+      genre,
+      rank,
+      rankChange: previousRank === undefined ? null : previousRank - rank,
+      totalFavorites: aggregate.totalFavorites,
+      totalPlayers: aggregate.totalPlayers,
+      totalVisits: aggregate.totalVisits,
+    };
+  });
+}
+
 export async function getPlatformCcuHistory() {
   return await db
     .select({

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { DisconnectRobloxButton } from "@/components/sections/settings/disconnect-roblox-button";
 import { SignOutButton } from "@/components/sections/settings/sign-out-button";
 import { ThemeToggleGroup } from "@/components/sections/settings/theme-toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,6 +79,18 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <SignOutButton />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Roblox account</CardTitle>
+            <CardDescription>
+              Disconnect your Roblox account from Bloxinsights.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DisconnectRobloxButton />
           </CardContent>
         </Card>
       </div>

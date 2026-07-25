@@ -15,6 +15,7 @@ export const user = sqliteTable("user", {
     .default(false)
     .notNull(),
   image: text("image"),
+  creditBalance: integer("creditBalance").notNull().default(0),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -95,9 +96,45 @@ export const verification = sqliteTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 );
 
+export const creditTransaction = sqliteTable(
+  "creditTransaction",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    balanceAfter: integer("balanceAfter").notNull(),
+    type: text("type", {
+      enum: ["purchase", "thumbnail_generation", "refund", "grant"],
+    }).notNull(),
+    description: text("description").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("creditTransaction_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+  ]
+);
+
+export const creditTransactionRelations = relations(
+  creditTransaction,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [creditTransaction.userId],
+      references: [user.id],
+    }),
+  })
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  creditTransactions: many(creditTransaction),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

@@ -18,6 +18,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { BuyCreditsDialog } from "@/components/sections/credits/buy-credits-dialog";
+import { useCredits } from "@/components/sections/credits/credits-provider";
 import {
   Attachment,
   AttachmentAction,
@@ -48,6 +50,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { THUMBNAIL_CREDIT_COSTS } from "@/lib/credits-shared";
 import { formatFileSize } from "@/lib/utils";
 
 const ROBLOX_GAME_LINK_PATTERN =
@@ -112,7 +115,11 @@ export function CreateThumbnailDialog() {
   );
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [model, setModel] = useState<ThumbnailModel>("fast");
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { balance, refreshBalance } = useCredits();
+  const creditCost = THUMBNAIL_CREDIT_COSTS[model];
+  const hasInsufficientCredits = balance < creditCost;
 
   useEffect(() => {
     if (!isGenerating) {
@@ -239,6 +246,9 @@ export function CreateThumbnailDialog() {
         error?: string;
       };
       if (!(response.ok && data.imageUrl)) {
+        if (response.status === 402) {
+          setShowBuyCredits(true);
+        }
         throw new Error(data.error ?? "Failed to generate thumbnail");
       }
       setGeneratedImageUrl(data.imageUrl);
@@ -248,6 +258,7 @@ export function CreateThumbnailDialog() {
       );
     } finally {
       setIsGenerating(false);
+      await refreshBalance();
     }
   };
 
@@ -468,7 +479,7 @@ export function CreateThumbnailDialog() {
                   type="button"
                   variant={model === "fast" ? "default" : "outline"}
                 >
-                  Fast
+                  Fast · {THUMBNAIL_CREDIT_COSTS.fast} credits
                 </Button>
                 <Button
                   aria-pressed={model === "quality"}
@@ -478,21 +489,40 @@ export function CreateThumbnailDialog() {
                   type="button"
                   variant={model === "quality" ? "default" : "outline"}
                 >
-                  High Quality
+                  High Quality · {THUMBNAIL_CREDIT_COSTS.quality} credits
                 </Button>
               </div>
+              <FieldDescription>
+                You have {balance} credits.{" "}
+                {hasInsufficientCredits && (
+                  <button
+                    className="underline underline-offset-3 hover:text-foreground"
+                    onClick={() => setShowBuyCredits(true)}
+                    type="button"
+                  >
+                    Buy more
+                  </button>
+                )}
+              </FieldDescription>
             </Field>
             <DialogFooter>
-              <Button disabled={isGenerating} type="submit">
+              <Button
+                disabled={isGenerating || hasInsufficientCredits}
+                type="submit"
+              >
                 {isGenerating && <Loader2Icon className="animate-spin" />}
                 {isGenerating
                   ? `Generating... ${formatElapsedTime(elapsedSeconds)}`
-                  : "Create Thumbnail"}
+                  : `Create Thumbnail · ${creditCost} credits`}
               </Button>
             </DialogFooter>
           </form>
         )}
       </DialogContent>
+      <BuyCreditsDialog
+        onOpenChange={setShowBuyCredits}
+        open={showBuyCredits}
+      />
     </Dialog>
   );
 }

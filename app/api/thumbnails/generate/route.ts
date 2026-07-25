@@ -1,6 +1,12 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import {
+  deductCredits,
+  InsufficientCreditsError,
+  refundCredits,
+} from "@/lib/credits";
+import { THUMBNAIL_CREDIT_COSTS } from "@/lib/credits-shared";
+import {
   buildThumbnailPrompt,
   generateThumbnail,
   saveThumbnail,
@@ -40,6 +46,21 @@ export async function POST(request: Request) {
     .filter((value): value is File => value instanceof File)
     .slice(0, MAX_REFERENCE_IMAGES);
 
+  const creditCost = THUMBNAIL_CREDIT_COSTS[model];
+
+  try {
+    await deductCredits(
+      session.user.id,
+      creditCost,
+      `Thumbnail generation (${model})`
+    );
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      return Response.json({ error: error.message }, { status: 402 });
+    }
+    throw error;
+  }
+
   const prompt = await buildThumbnailPrompt({
     gameLink: typeof gameLink === "string" && gameLink ? gameLink : null,
     gameConcept:
@@ -74,6 +95,11 @@ export async function POST(request: Request) {
     });
     return Response.json({ imageUrl: toImageProxyUrl(imagePath) });
   } catch (error) {
+    await refundCredits(
+      session.user.id,
+      creditCost,
+      `Refund for failed thumbnail generation (${model})`
+    );
     const message =
       error instanceof Error ? error.message : "Failed to generate thumbnail";
     return Response.json({ error: message }, { status: 500 });

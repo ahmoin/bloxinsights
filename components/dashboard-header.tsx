@@ -1,3 +1,4 @@
+import { CreditBalanceBadge } from "@/components/sections/credits/credit-balance-badge";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -11,6 +12,9 @@ export function DashboardHeader({ title = "Home" }: { title?: string }) {
           orientation="vertical"
         />
         <h1 className="font-medium text-base">{title}</h1>
+        <div className="ml-auto">
+          <CreditBalanceBadge />
+        </div>
       </div>
     </header>
   );

@@ -232,3 +232,28 @@ export const thumbnailRelations = relations(thumbnail, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const asset = sqliteTable(
+  "asset",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    name: text("name").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("asset_userId_createdAt_idx").on(table.userId, table.createdAt),
+  ]
+);
+
+export const assetRelations = relations(asset, ({ one }) => ({
+  user: one(user, {
+    fields: [asset.userId],
+    references: [user.id],
+  }),
+}));

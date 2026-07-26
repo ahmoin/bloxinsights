@@ -4,6 +4,7 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   ImagePlusIcon,
+  ImagesIcon,
   Loader2Icon,
   PaintBucketIcon,
   XIcon,
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { BuyCreditsDialog } from "@/components/sections/credits/buy-credits-dialog";
 import { useCredits } from "@/components/sections/credits/credits-provider";
+import { LibraryAssetPicker } from "@/components/sections/library/library-asset-picker";
 import {
   Attachment,
   AttachmentAction,
@@ -50,6 +52,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { LibraryAsset } from "@/lib/assets-shared";
 import { THUMBNAIL_CREDIT_COSTS } from "@/lib/credits-shared";
 import { formatFileSize } from "@/lib/utils";
 
@@ -57,6 +60,8 @@ const ROBLOX_GAME_LINK_PATTERN =
   /^https:\/\/(www\.)?roblox\.com\/(games|share)\/\d+/;
 const REFERENCE_IMAGE_PREVIEW_SIZE = 64;
 const GENERATION_TIMER_INTERVAL_MS = 1000;
+const MAX_REFERENCE_IMAGES = 4;
+const RECENT_ASSETS_LIMIT = 5;
 
 function formatElapsedTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -116,10 +121,25 @@ export function CreateThumbnailDialog() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [model, setModel] = useState<ThumbnailModel>("fast");
   const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [recentAssets, setRecentAssets] = useState<LibraryAsset[]>([]);
+  const [selectedAssets, setSelectedAssets] = useState<LibraryAsset[]>([]);
+  const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { balance, refreshBalance } = useCredits();
   const creditCost = THUMBNAIL_CREDIT_COSTS[model];
   const hasInsufficientCredits = balance < creditCost;
+  const usedReferenceSlots = referenceImages.length + selectedAssets.length;
+  const remainingReferenceSlots = MAX_REFERENCE_IMAGES - usedReferenceSlots;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    fetch(`/api/assets?limit=${RECENT_ASSETS_LIMIT}`)
+      .then((response) => response.json())
+      .then((data: { assets: LibraryAsset[] }) => setRecentAssets(data.assets))
+      .catch(() => null);
+  }, [open]);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -160,7 +180,11 @@ export function CreateThumbnailDialog() {
   const handleReferenceImagesChange = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const files = [...(event.target.files ?? [])];
+    const files = [...(event.target.files ?? [])].slice(
+      0,
+      remainingReferenceSlots
+    );
+    event.target.value = "";
     if (files.length === 0) {
       return;
     }
@@ -171,7 +195,6 @@ export function CreateThumbnailDialog() {
         previewUrl: URL.createObjectURL(file),
       })),
     ]);
-    event.target.value = "";
   };
 
   const removeReferenceImage = (previewUrl: string) => {
@@ -179,6 +202,24 @@ export function CreateThumbnailDialog() {
     setReferenceImages((current) =>
       current.filter((image) => image.previewUrl !== previewUrl)
     );
+  };
+
+  const toggleRecentAsset = (asset: LibraryAsset) => {
+    setSelectedAssets((current) => {
+      const isSelected = current.some((item) => item.id === asset.id);
+      if (isSelected) {
+        return current.filter((item) => item.id !== asset.id);
+      }
+      if (remainingReferenceSlots <= 0) {
+        toast.error(`You can only use up to ${MAX_REFERENCE_IMAGES} images`);
+        return current;
+      }
+      return [...current, asset];
+    });
+  };
+
+  const removeSelectedAsset = (id: string) => {
+    setSelectedAssets((current) => current.filter((asset) => asset.id !== id));
   };
 
   const resetForm = () => {
@@ -189,6 +230,7 @@ export function CreateThumbnailDialog() {
     setGameLinkError(null);
     setGameConceptError(null);
     clearReferenceImages();
+    setSelectedAssets([]);
     setGeneratedImageUrl(null);
     setModel("fast");
   };
@@ -233,6 +275,12 @@ export function CreateThumbnailDialog() {
     formData.set("model", model);
     for (const image of referenceImages) {
       formData.append("referenceImages", image.file);
+    }
+    if (selectedAssets.length > 0) {
+      formData.set(
+        "referenceAssetPaths",
+        JSON.stringify(selectedAssets.map((asset) => asset.path))
+      );
     }
 
     setIsGenerating(true);
@@ -453,19 +501,91 @@ export function CreateThumbnailDialog() {
                   ))}
                 </AttachmentGroup>
               )}
-              <Button
-                className="w-fit"
-                onClick={() => fileInputRef.current?.click()}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <ImagePlusIcon />
-                Add images
-              </Button>
+              {selectedAssets.length > 0 && (
+                <AttachmentGroup className="flex-wrap gap-2 overflow-x-visible">
+                  {selectedAssets.map((asset) => (
+                    <Attachment key={asset.id} size="sm">
+                      <AttachmentMedia variant="image">
+                        <Image
+                          alt={asset.name}
+                          height={REFERENCE_IMAGE_PREVIEW_SIZE}
+                          src={asset.imageUrl}
+                          unoptimized
+                          width={REFERENCE_IMAGE_PREVIEW_SIZE}
+                        />
+                      </AttachmentMedia>
+                      <AttachmentContent>
+                        <AttachmentTitle>{asset.name}</AttachmentTitle>
+                        <AttachmentDescription>
+                          From your library
+                        </AttachmentDescription>
+                      </AttachmentContent>
+                      <AttachmentActions>
+                        <AttachmentAction
+                          aria-label={`Remove ${asset.name}`}
+                          onClick={() => removeSelectedAsset(asset.id)}
+                        >
+                          <XIcon />
+                        </AttachmentAction>
+                      </AttachmentActions>
+                    </Attachment>
+                  ))}
+                </AttachmentGroup>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  className="w-fit"
+                  disabled={remainingReferenceSlots <= 0}
+                  onClick={() => fileInputRef.current?.click()}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ImagePlusIcon />
+                  Add images
+                </Button>
+                <Button
+                  className="w-fit"
+                  disabled={remainingReferenceSlots <= 0}
+                  onClick={() => setShowLibraryPicker(true)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ImagesIcon />
+                  From library
+                </Button>
+              </div>
+              {recentAssets.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {recentAssets.map((asset) => {
+                    const isSelected = selectedAssets.some(
+                      (item) => item.id === asset.id
+                    );
+                    return (
+                      <button
+                        className={`overflow-hidden rounded-md border-2 ${
+                          isSelected ? "border-primary" : "border-transparent"
+                        }`}
+                        key={asset.id}
+                        onClick={() => toggleRecentAsset(asset)}
+                        type="button"
+                      >
+                        <Image
+                          alt={asset.name}
+                          height={REFERENCE_IMAGE_PREVIEW_SIZE}
+                          src={asset.imageUrl}
+                          unoptimized
+                          width={REFERENCE_IMAGE_PREVIEW_SIZE}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <FieldDescription>
                 Optional — screenshots, characters, or thumbnails whose style
-                you like.
+                you like. Up to {MAX_REFERENCE_IMAGES} images.
               </FieldDescription>
             </Field>
             <Field>
@@ -522,6 +642,15 @@ export function CreateThumbnailDialog() {
       <BuyCreditsDialog
         onOpenChange={setShowBuyCredits}
         open={showBuyCredits}
+      />
+      <LibraryAssetPicker
+        disabledPaths={selectedAssets.map((asset) => asset.path)}
+        maxSelectable={remainingReferenceSlots}
+        onConfirm={(assets) =>
+          setSelectedAssets((current) => [...current, ...assets])
+        }
+        onOpenChange={setShowLibraryPicker}
+        open={showLibraryPicker}
       />
     </Dialog>
   );

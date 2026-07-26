@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { assetToDataUri, isOwnedAssetPath } from "@/lib/assets";
 import { auth } from "@/lib/auth";
 import {
   deductCredits,
@@ -45,6 +46,18 @@ export async function POST(request: Request) {
     .getAll("referenceImages")
     .filter((value): value is File => value instanceof File)
     .slice(0, MAX_REFERENCE_IMAGES);
+  const referenceAssetPathsInput = formData.get("referenceAssetPaths");
+  const requestedAssetPaths: string[] =
+    typeof referenceAssetPathsInput === "string" && referenceAssetPathsInput
+      ? (JSON.parse(referenceAssetPathsInput) as string[])
+      : [];
+  const remainingSlots = Math.max(
+    0,
+    MAX_REFERENCE_IMAGES - referenceImageFiles.length
+  );
+  const referenceAssetPaths = requestedAssetPaths
+    .filter((path) => isOwnedAssetPath(path, session.user.id))
+    .slice(0, remainingSlots);
 
   const creditCost = THUMBNAIL_CREDIT_COSTS[model];
 
@@ -69,14 +82,27 @@ export async function POST(request: Request) {
   });
 
   try {
-    const [referenceImages, referenceImagePaths] = await Promise.all([
+    const [
+      uploadedReferenceImages,
+      uploadedReferenceImagePaths,
+      assetReferenceImages,
+    ] = await Promise.all([
       Promise.all(referenceImageFiles.map(fileToDataUri)),
       Promise.all(
         referenceImageFiles.map((file) =>
           storeReferenceImage(file, session.user.id)
         )
       ),
+      Promise.all(referenceAssetPaths.map(assetToDataUri)),
     ]);
+    const referenceImages = [
+      ...uploadedReferenceImages,
+      ...assetReferenceImages,
+    ];
+    const referenceImagePaths = [
+      ...uploadedReferenceImagePaths,
+      ...referenceAssetPaths,
+    ];
     const generatedImage = await generateThumbnail({
       prompt,
       referenceImages,

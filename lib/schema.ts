@@ -257,3 +257,13 @@ export const assetRelations = relations(asset, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const contactMessage = sqliteTable("contactMessage", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});

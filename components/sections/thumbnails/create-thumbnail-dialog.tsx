@@ -423,7 +423,7 @@ export function CreateThumbnailDialog() {
                       value={idea}
                     />
                     <FieldDescription>
-                      Optional — leave blank and we'll come up with some.
+                      Optional, leave blank and we'll come up with some.
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
@@ -584,8 +584,8 @@ export function CreateThumbnailDialog() {
                 </div>
               )}
               <FieldDescription>
-                Optional — screenshots, characters, or thumbnails whose style
-                you like. Up to {MAX_REFERENCE_IMAGES} images.
+                Optional, screenshots, characters, or thumbnails whose style you
+                like. Up to {MAX_REFERENCE_IMAGES} images.
               </FieldDescription>
             </Field>
             <Field>

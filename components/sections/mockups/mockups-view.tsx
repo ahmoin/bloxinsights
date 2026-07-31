@@ -5,6 +5,8 @@ import {
   type MockupGame,
   RobloxHomepageMockup,
 } from "@/components/sections/mockups/roblox-homepage-mockup";
+import { CreateThumbnailDialog } from "@/components/sections/thumbnails/create-thumbnail-dialog";
+import { UploadThumbnailDialog } from "@/components/sections/thumbnails/upload-thumbnail-dialog";
 import {
   Select,
   SelectContent,
@@ -32,7 +34,7 @@ export function MockupsView({
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-sm">Thumbnail</span>
         <Select onValueChange={setSelectedId} value={selectedId}>
           <SelectTrigger className="w-full sm:w-80">
@@ -46,6 +48,10 @@ export function MockupsView({
             ))}
           </SelectContent>
         </Select>
+        <div className="ml-auto flex items-center gap-2">
+          <CreateThumbnailDialog />
+          <UploadThumbnailDialog />
+        </div>
       </div>
       <RobloxHomepageMockup
         games={games}

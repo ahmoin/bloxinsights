@@ -2,6 +2,7 @@ import { PlayCircleIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CreateThumbnailDialog } from "@/components/sections/thumbnails/create-thumbnail-dialog";
+import { UploadThumbnailDialog } from "@/components/sections/thumbnails/upload-thumbnail-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -38,6 +39,7 @@ export function ThumbnailEmpty({
       <EmptyContent>
         <div className="flex items-center gap-3">
           <CreateThumbnailDialog />
+          <UploadThumbnailDialog />
           {showTutorial && (
             <Button asChild variant="outline">
               <Link href={TUTORIAL_URL} rel="noopener" target="_blank">

@@ -2,16 +2,17 @@ import { headers } from "next/headers";
 import {
   deleteAsset,
   listAssets,
+  renameAsset,
   saveAsset,
   storeAsset,
   toAssetImageProxyUrl,
 } from "@/lib/assets";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 
 const MAX_UPLOAD_FILES = 20;
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -63,8 +64,29 @@ export async function POST(request: Request) {
   return Response.json({ assets });
 }
 
+export async function PATCH(request: Request) {
+  const session = await getSessionSafe(await headers());
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = (await request.json()) as { id?: string; name?: string };
+  const name = body.name?.trim();
+  if (!(body.id && name)) {
+    return Response.json(
+      { error: "Missing asset id or name" },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  await renameAsset(session.user.id, body.id, name);
+  return Response.json({ success: true });
+}
+
 export async function DELETE(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import { getCreditBalance } from "@/lib/credits";
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

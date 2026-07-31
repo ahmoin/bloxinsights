@@ -30,3 +30,20 @@ export function formatFileSize(bytes: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export function formatThumbnailFileName(date: Date): string {
+  const datePart = date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const timePart = date
+    .toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      hour12: true,
+      minute: "2-digit",
+      second: "2-digit",
+    })
+    .replace(/:/g, "_");
+  return `Bloxinsights Thumbnail ${datePart}, ${timePart}.png`;
+}

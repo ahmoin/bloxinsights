@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { openrouter } from "@openrouter/ai-sdk-provider";
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 import { generateImage, generateObject } from "ai";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { thumbnail } from "@/lib/schema";
@@ -120,9 +121,21 @@ export async function storeReferenceImage(
   return result.pathname;
 }
 
+export async function storeUploadedThumbnail(
+  file: File,
+  userId: string
+): Promise<string> {
+  const result = await put(
+    `thumbnails/${userId}/${randomUUID()}-${file.name}`,
+    file,
+    { access: "private" }
+  );
+  return result.pathname;
+}
+
 export interface SaveThumbnailInput {
   imagePath: string;
-  model: ThumbnailModelId;
+  model: ThumbnailModelId | "upload";
   prompt: string;
   referenceImagePaths: string[];
   userId: string;
@@ -135,6 +148,32 @@ export async function saveThumbnail(input: SaveThumbnailInput): Promise<void> {
 export async function listThumbnails(userId: string) {
   return await db.query.thumbnail.findMany({
     orderBy: (row, { desc }) => desc(row.createdAt),
-    where: (row, { eq }) => eq(row.userId, userId),
+    where: (row, { eq: whereEq }) => whereEq(row.userId, userId),
   });
+}
+
+export async function renameThumbnail(
+  userId: string,
+  id: string,
+  name: string
+): Promise<void> {
+  await db
+    .update(thumbnail)
+    .set({ prompt: name })
+    .where(and(eq(thumbnail.id, id), eq(thumbnail.userId, userId)));
+}
+
+export async function deleteThumbnail(
+  userId: string,
+  id: string
+): Promise<void> {
+  const existing = await db.query.thumbnail.findFirst({
+    where: (row, { and: whereAnd, eq: whereEq }) =>
+      whereAnd(whereEq(row.id, id), whereEq(row.userId, userId)),
+  });
+  if (!existing) {
+    return;
+  }
+  await del(existing.imagePath);
+  await db.delete(thumbnail).where(eq(thumbnail.id, id));
 }

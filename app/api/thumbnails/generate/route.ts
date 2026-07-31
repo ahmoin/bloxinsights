@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { assetToDataUri, isOwnedAssetPath } from "@/lib/assets";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import {
   deductCredits,
   InsufficientCreditsError,
@@ -28,7 +28,7 @@ async function fileToDataUri(file: File): Promise<string> {
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

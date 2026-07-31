@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { del, get, put } from "@vercel/blob";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { asset } from "@/lib/schema";
 
@@ -39,6 +39,17 @@ export async function listAssets(userId: string, limit?: number) {
     orderBy: (row, { desc }) => desc(row.createdAt),
     where: (row, { eq: whereEq }) => whereEq(row.userId, userId),
   });
+}
+
+export async function renameAsset(
+  userId: string,
+  id: string,
+  name: string
+): Promise<void> {
+  await db
+    .update(asset)
+    .set({ name })
+    .where(and(eq(asset.id, id), eq(asset.userId, userId)));
 }
 
 export async function deleteAsset(userId: string, id: string): Promise<void> {

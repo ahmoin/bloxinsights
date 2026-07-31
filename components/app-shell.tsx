@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { CreditsProvider } from "@/components/sections/credits/credits-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import { getCreditBalance } from "@/lib/credits";
 
 export async function AppShell({
@@ -15,9 +15,7 @@ export async function AppShell({
   children: ReactNode;
   title: string;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return redirect("/");
   }

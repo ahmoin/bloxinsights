@@ -21,3 +21,20 @@ export const auth = betterAuth({
     },
   },
 });
+
+type Session = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+/**
+ * Wraps auth.api.getSession so a database outage falls back to a guest
+ * (logged-out) session instead of throwing and crashing the page/route.
+ */
+export async function getSessionSafe(
+  headers: Headers
+): Promise<Session | null> {
+  try {
+    return await auth.api.getSession({ headers });
+  } catch (error) {
+    console.error("Failed to get session, falling back to guest mode", error);
+    return null;
+  }
+}

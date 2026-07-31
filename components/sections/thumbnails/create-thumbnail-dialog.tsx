@@ -10,6 +10,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -54,7 +55,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { LibraryAsset } from "@/lib/assets-shared";
 import { THUMBNAIL_CREDIT_COSTS } from "@/lib/credits-shared";
-import { formatFileSize } from "@/lib/utils";
+import { formatFileSize, formatThumbnailFileName } from "@/lib/utils";
 
 const ROBLOX_GAME_LINK_PATTERN =
   /^https:\/\/(www\.)?roblox\.com\/(games|share)\/\d+/;
@@ -67,23 +68,6 @@ function formatElapsedTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
-function formatThumbnailFileName(date: Date): string {
-  const datePart = date.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const timePart = date
-    .toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      hour12: true,
-      minute: "2-digit",
-      second: "2-digit",
-    })
-    .replace(/:/g, "_");
-  return `Bloxinsights Thumbnail ${datePart}, ${timePart}.png`;
 }
 
 interface ReferenceImage {
@@ -106,6 +90,7 @@ const gameConceptSchema = z
 type ThumbnailModel = "fast" | "quality";
 
 export function CreateThumbnailDialog() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("with-game");
   const [gameLink, setGameLink] = useState("");
@@ -300,6 +285,7 @@ export function CreateThumbnailDialog() {
         throw new Error(data.error ?? "Failed to generate thumbnail");
       }
       setGeneratedImageUrl(data.imageUrl);
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate thumbnail"

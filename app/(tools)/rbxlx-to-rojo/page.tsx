@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { RbxlxToRojoHero } from "@/components/sections/rbxlx-to-rojo/hero";
 import { RbxlxToRojoUploader } from "@/components/sections/rbxlx-to-rojo/uploader";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RbxlxToRojoPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
 
   if (!session) {
     return <RbxlxToRojoHero />;

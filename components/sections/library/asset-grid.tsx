@@ -1,8 +1,8 @@
 "use client";
 
-import { ImageUpIcon, Loader2Icon, TrashIcon } from "lucide-react";
+import { ImageUpIcon, Loader2Icon, PencilIcon, TrashIcon } from "lucide-react";
 import Image from "next/image";
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
 import type { LibraryAsset } from "@/lib/assets-shared";
 
 export function AssetGrid({
@@ -23,6 +24,8 @@ export function AssetGrid({
   const [assets, setAssets] = useState(initialAssets);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -51,6 +54,57 @@ export function AssetGrid({
       toast.error("Failed to upload assets");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const startRenaming = (asset: LibraryAsset) => {
+    setRenamingId(asset.id);
+    setRenameValue(asset.name);
+  };
+
+  const cancelRenaming = () => {
+    setRenamingId(null);
+    setRenameValue("");
+  };
+
+  const commitRename = async () => {
+    const id = renamingId;
+    const name = renameValue.trim();
+    if (!id) {
+      return;
+    }
+    const original = assets.find((asset) => asset.id === id)?.name;
+    cancelRenaming();
+    if (!name || name === original) {
+      return;
+    }
+    setAssets((current) =>
+      current.map((asset) => (asset.id === id ? { ...asset, name } : asset))
+    );
+    try {
+      const response = await fetch("/api/assets", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to rename asset");
+      }
+    } catch {
+      toast.error("Failed to rename asset");
+      setAssets((current) =>
+        current.map((asset) =>
+          asset.id === id && original ? { ...asset, name: original } : asset
+        )
+      );
+    }
+  };
+
+  const handleRenameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    } else if (event.key === "Escape") {
+      cancelRenaming();
     }
   };
 
@@ -134,24 +188,45 @@ export function AssetGrid({
                 unoptimized
                 width={384}
               />
-              <p className="truncate px-3 pb-3 text-muted-foreground text-sm">
-                {asset.name}
-              </p>
-              <Button
-                aria-label={`Delete ${asset.name}`}
-                className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
-                disabled={deletingId === asset.id}
-                onClick={() => handleDelete(asset.id)}
-                size="icon-sm"
-                type="button"
-                variant="destructive"
-              >
-                {deletingId === asset.id ? (
-                  <Loader2Icon className="animate-spin" />
-                ) : (
-                  <TrashIcon />
-                )}
-              </Button>
+              {renamingId === asset.id ? (
+                <Input
+                  autoFocus
+                  className="mx-3 mb-3 h-7"
+                  onBlur={commitRename}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  onKeyDown={handleRenameKeyDown}
+                  value={renameValue}
+                />
+              ) : (
+                <p className="truncate px-3 pb-3 text-muted-foreground text-sm">
+                  {asset.name}
+                </p>
+              )}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  aria-label={`Rename ${asset.name}`}
+                  onClick={() => startRenaming(asset)}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <PencilIcon />
+                </Button>
+                <Button
+                  aria-label={`Delete ${asset.name}`}
+                  disabled={deletingId === asset.id}
+                  onClick={() => handleDelete(asset.id)}
+                  size="icon-sm"
+                  type="button"
+                  variant="destructive"
+                >
+                  {deletingId === asset.id ? (
+                    <Loader2Icon className="animate-spin" />
+                  ) : (
+                    <TrashIcon />
+                  )}
+                </Button>
+              </div>
             </div>
           ))}
         </div>

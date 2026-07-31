@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ChartAreaInteractive } from "@/components/sections/dashboard/chart-area-interactive";
 import { SectionCards } from "@/components/sections/dashboard/section-cards";
 import { GamesTable } from "@/components/sections/tables/games-table";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import {
   getGamesList,
   getPlatformCcuHistory,
@@ -17,9 +17,7 @@ const TOP_GAMES_LIMIT = 10;
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSessionSafe(await headers());
   if (session) {
     return redirect("/dashboard");
   }

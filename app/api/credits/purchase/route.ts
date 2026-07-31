@@ -1,12 +1,12 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getSessionSafe } from "@/lib/auth";
 import { addPurchasedCredits } from "@/lib/credits";
 import { getCreditPackage } from "@/lib/credits-shared";
 
 // TODO: replace this mock grant with real payment handling (Stripe checkout,
 // webhook-confirmed fulfillment) once billing is wired up.
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSessionSafe(await headers());
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

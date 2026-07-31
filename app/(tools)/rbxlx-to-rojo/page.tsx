@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
-import { AppShell } from "@/components/app-shell";
-import { RbxlxToRojoHero } from "@/components/sections/rbxlx-to-rojo/hero";
 import { RbxlxToRojoUploader } from "@/components/sections/rbxlx-to-rojo/uploader";
-import { getSessionSafe } from "@/lib/auth";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -11,16 +9,14 @@ export const metadata: Metadata = {
   description: "Convert a Roblox place file into a Rojo project",
 };
 
-export default async function RbxlxToRojoPage() {
-  const session = await getSessionSafe(await headers());
-
-  if (!session) {
-    return <RbxlxToRojoHero />;
-  }
-
+export default function RbxlxToRojoPage() {
   return (
-    <AppShell title="RBXLX to Rojo">
-      <RbxlxToRojoUploader />
-    </AppShell>
+    <div className="flex min-h-svh flex-col">
+      <SiteHeader />
+      <main className="flex flex-1 flex-col">
+        <RbxlxToRojoUploader />
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

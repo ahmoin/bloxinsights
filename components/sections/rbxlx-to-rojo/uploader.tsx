@@ -8,7 +8,13 @@ import {
   RotateCcwIcon,
   UploadIcon,
 } from "lucide-react";
-import { type ChangeEvent, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type DragEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { BundledLanguage } from "shiki";
 import { toast } from "sonner";
 import {
@@ -265,15 +271,10 @@ export function RbxlxToRojoUploader() {
   const [isConverting, setIsConverting] = useState(false);
   const [excludeInitMeta, setExcludeInitMeta] = useState(false);
   const [result, setResult] = useState<ConversionResult | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) {
-      return;
-    }
-
+  const processFile = async (file: File) => {
     const extension = getExtension(file.name);
     if (!extension) {
       toast.error("File must be a .rbxlx, .rbxmx, .rbxl, or .rbxm file");
@@ -304,6 +305,42 @@ export function RbxlxToRojoUploader() {
     }
   };
 
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    await processFile(file);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (isConverting) {
+      return;
+    }
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(false);
+    if (isConverting) {
+      return;
+    }
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    await processFile(file);
+  };
+
   if (result) {
     return (
       <div className={cn("flex flex-1 flex-col")}>
@@ -313,7 +350,15 @@ export function RbxlxToRojoUploader() {
   }
 
   return (
-    <Empty className="flex-1 gap-8 p-10">
+    <Empty
+      className={cn(
+        "flex-1 gap-8 border-2 border-dashed p-10 transition-colors",
+        isDraggingOver && "border-primary bg-primary/5"
+      )}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <EmptyHeader className="max-w-lg gap-4">
         <EmptyMedia variant="icon">
           <FileArchiveIcon />
@@ -322,9 +367,9 @@ export function RbxlxToRojoUploader() {
           Convert a place file to a Rojo project
         </EmptyTitle>
         <EmptyDescription className="text-base">
-          Upload a .rbxlx, .rbxmx, .rbxl, or .rbxm file. Conversion runs
-          entirely in your browser. You'll be able to browse the generated
-          scripts before downloading a Rojo project as a zip.
+          Drag and drop or upload a .rbxlx, .rbxmx, .rbxl, or .rbxm file.
+          Conversion runs entirely in your browser. You'll be able to browse the
+          generated scripts before downloading a Rojo project as a zip.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="gap-4">

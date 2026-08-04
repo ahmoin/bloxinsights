@@ -442,12 +442,14 @@ export async function getGamesList({
   filters,
   page = DEFAULT_GAMES_PAGE,
   pageSize = DEFAULT_GAMES_PAGE_SIZE,
+  query,
   rankMax,
   sort,
 }: {
   filters?: GamesListFilters;
   page?: number;
   pageSize?: number;
+  query?: string;
   rankMax?: number;
   sort: GamesListSort;
 }): Promise<GamesListResult> {
@@ -495,9 +497,14 @@ export async function getGamesList({
     sort
   );
 
-  const filtered = filters
-    ? ranked.filter((row) => matchesFilters(row, filters))
+  const normalizedQuery = query?.trim().toLowerCase();
+  const nameMatched = normalizedQuery
+    ? ranked.filter((row) => row.name.toLowerCase().includes(normalizedQuery))
     : ranked;
+
+  const filtered = filters
+    ? nameMatched.filter((row) => matchesFilters(row, filters))
+    : nameMatched;
 
   const start = (page - 1) * pageSize;
   const pageRows = filtered.slice(start, start + pageSize);

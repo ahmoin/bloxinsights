@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -25,7 +25,9 @@ export const dynamic = "force-dynamic";
 const INITIALS_LENGTH = 2;
 
 export default async function SettingsPage() {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return redirect("/login");
   }

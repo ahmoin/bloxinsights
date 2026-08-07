@@ -5,8 +5,10 @@ import {
   CircleUserRoundIcon,
   CreditCardIcon,
   EllipsisVerticalIcon,
+  LogInIcon,
   LogOutIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,17 +37,33 @@ export function NavUser({
     name: string;
     email: string;
     avatar: string;
-  };
+  } | null;
 }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
-  const initials = user.name.slice(0, INITIALS_LENGTH).toUpperCase();
 
   const handleSignOut = async () => {
     await authClient.signOut();
     router.push("/");
     router.refresh();
   };
+
+  if (!user) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild size="lg">
+            <Link href="/login">
+              <LogInIcon className="size-4" />
+              <span className="truncate font-medium">Sign in</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+
+  const initials = user.name.slice(0, INITIALS_LENGTH).toUpperCase();
 
   return (
     <SidebarMenu>

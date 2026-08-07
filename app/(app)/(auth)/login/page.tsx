@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { UserAuthForm } from "@/components/user-auth-form";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -11,7 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AuthenticationPage() {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (session) {
     return redirect("/dashboard");
   }

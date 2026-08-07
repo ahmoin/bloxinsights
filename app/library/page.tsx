@@ -8,7 +8,7 @@ import { ThumbnailGrid } from "@/components/sections/library/thumbnail-grid";
 import { ThumbnailEmpty } from "@/components/sections/thumbnails/thumbnail-empty";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listAssets, toAssetImageProxyUrl } from "@/lib/assets";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 import { listThumbnails, toImageProxyUrl } from "@/lib/thumbnails";
 
@@ -20,7 +20,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage() {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return redirect("/login");
   }

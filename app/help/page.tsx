@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -52,7 +52,9 @@ const FAQS = [
 ];
 
 export default async function HelpPage() {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return redirect("/login");
   }

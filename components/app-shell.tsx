@@ -1,11 +1,10 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { CreditsProvider } from "@/components/sections/credits/credits-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { getCreditBalance } from "@/lib/credits";
 
 export async function AppShell({
@@ -15,17 +14,18 @@ export async function AppShell({
   children: ReactNode;
   title: string;
 }) {
-  const session = await getSessionSafe(await headers());
-  if (!session) {
-    return redirect("/");
-  }
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  const user = {
-    name: session.user.name,
-    email: session.user.email,
-    avatar: session.user.image ?? "",
-  };
-  const creditBalance = await getCreditBalance(session.user.id);
+  const user = session
+    ? {
+        name: session.user.name,
+        email: session.user.email,
+        avatar: session.user.image ?? "",
+      }
+    : null;
+  const creditBalance = session ? await getCreditBalance(session.user.id) : 0;
 
   return (
     <CreditsProvider initialBalance={creditBalance}>

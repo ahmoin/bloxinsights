@@ -1,4 +1,3 @@
-import { dash } from "@better-auth/infra";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { siteConfig } from "@/lib/config";
@@ -11,7 +10,7 @@ export const auth = betterAuth({
     provider: "sqlite",
     schema,
   }),
-  plugins: [dash()],
+  plugins: [],
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   trustedOrigins: ["http://localhost:3000", siteConfig.url],
   socialProviders: {
@@ -21,20 +20,3 @@ export const auth = betterAuth({
     },
   },
 });
-
-type Session = Awaited<ReturnType<typeof auth.api.getSession>>;
-
-/**
- * Wraps auth.api.getSession so a database outage falls back to a guest
- * (logged-out) session instead of throwing and crashing the page/route.
- */
-export async function getSessionSafe(
-  headers: Headers
-): Promise<Session | null> {
-  try {
-    return await auth.api.getSession({ headers });
-  } catch (error) {
-    console.error("Failed to get session, falling back to guest mode", error);
-    return null;
-  }
-}

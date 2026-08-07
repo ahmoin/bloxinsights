@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import {
   saveThumbnail,
   storeUploadedThumbnail,
@@ -9,7 +9,9 @@ import {
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export async function POST(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

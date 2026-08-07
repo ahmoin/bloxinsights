@@ -23,6 +23,13 @@ ustr = "1.1"
 wasm-bindgen = "=0.2.100"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
+[patch."https://github.com/rojo-rbx/rbx-dom/"]
+rbx_binary = { path = "../vendor/rbx-dom/rbx_binary" }
+rbx_dom_weak = { path = "../vendor/rbx-dom/rbx_dom_weak" }
+rbx_reflection = { path = "../vendor/rbx-dom/rbx_reflection" }
+rbx_reflection_database = { path = "../vendor/rbx-dom/rbx_reflection_database" }
+rbx_xml = { path = "../vendor/rbx-dom/rbx_xml" }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
 getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }

@@ -97,8 +97,8 @@ const data = {
   ],
   tools: [
     {
-      name: "RBXLX to Rojo",
-      url: "/rbxlx-to-rojo",
+      name: "RBXL to Rojo",
+      url: "/rbxl-to-rojo",
       icon: <WrenchIcon />,
     },
   ],
@@ -108,7 +108,7 @@ export function AppSidebar({
   user,
   ...props
 }: ComponentProps<typeof Sidebar> & {
-  user: { name: string; email: string; avatar: string };
+  user: { name: string; email: string; avatar: string } | null;
 }) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>

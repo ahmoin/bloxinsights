@@ -7,12 +7,14 @@ import {
   storeAsset,
   toAssetImageProxyUrl,
 } from "@/lib/assets";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 const MAX_UPLOAD_FILES = 20;
 
 export async function GET(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -33,7 +35,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -65,7 +69,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -86,7 +92,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -7,7 +7,7 @@ import {
 } from "ai";
 import { headers } from "next/headers";
 import { analyzeTools } from "@/lib/ai/tools";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 const ANALYZE_MODEL = "google/gemini-2.5-flash";
 const MAX_STEPS = 5;
@@ -23,7 +23,9 @@ When a tool returns a list of games or stats, the UI already renders that data a
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }

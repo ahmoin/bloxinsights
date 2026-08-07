@@ -191,11 +191,19 @@ async function fetchCcuBatch(universeIds, attempt = 1) {
     throw new Error(`Games API request failed: ${response.status}`);
   }
   const data = await response.json();
-  const ccuByUniverseId = new Map();
+  const metricsByUniverseId = new Map();
   for (const entry of data.data ?? []) {
-    ccuByUniverseId.set(entry.id, entry.playing ?? 0);
+    metricsByUniverseId.set(entry.id, {
+      playerCount: entry.playing ?? 0,
+      visits: entry.visits ?? 0,
+      favoritedCount: entry.favoritedCount ?? 0,
+      genre: entry.genre && entry.genre.length > 0 ? entry.genre : null,
+      dateCreated: entry.created
+        ? Math.floor(new Date(entry.created).getTime() / 1000)
+        : null,
+    });
   }
-  return ccuByUniverseId;
+  return metricsByUniverseId;
 }
 
 async function main() {
@@ -250,24 +258,24 @@ async function main() {
   const universeIds = registry.rows.map((row) => Number(row.universeId));
   console.log("registry size:", universeIds.length);
 
-  const ccuByUniverseId = new Map();
+  const metricsByUniverseId = new Map();
   const batches = chunkArray(universeIds, GAMES_BATCH_SIZE);
   let batchNum = 0;
   for (const batch of batches) {
     batchNum++;
     const result = await fetchCcuBatch(batch);
-    for (const [universeId, playing] of result) {
-      ccuByUniverseId.set(universeId, playing);
+    for (const [universeId, metrics] of result) {
+      metricsByUniverseId.set(universeId, metrics);
     }
     console.log(`ccu batch ${batchNum}/${batches.length} done`);
     await sleep(BATCH_PACING_MS);
   }
 
   const knownUniverseIds = new Set(universeIds);
-  const snapshotRows = [...ccuByUniverseId.entries()].filter(([universeId]) =>
-    knownUniverseIds.has(universeId)
+  const snapshotRows = [...metricsByUniverseId.entries()].filter(
+    ([universeId]) => knownUniverseIds.has(universeId)
   );
-  const droppedIds = [...ccuByUniverseId.keys()].filter(
+  const droppedIds = [...metricsByUniverseId.keys()].filter(
     (universeId) => !knownUniverseIds.has(universeId)
   );
   if (droppedIds.length > 0) {
@@ -275,9 +283,9 @@ async function main() {
   }
   for (const batch of chunkArray(snapshotRows, SNAPSHOT_CHUNK_SIZE)) {
     const values = batch.map(() => "(?, ?, ?)").join(", ");
-    const args = batch.flatMap(([universeId, playing]) => [
+    const args = batch.flatMap(([universeId, metrics]) => [
       universeId,
-      playing,
+      metrics.playerCount,
       timestampSeconds,
     ]);
     await client.execute({
@@ -286,7 +294,27 @@ async function main() {
     });
   }
 
-  const totalCcu = snapshotRows.reduce((sum, [, playing]) => sum + playing, 0);
+  for (const batch of chunkArray(snapshotRows, UPSERT_CHUNK_SIZE)) {
+    await Promise.all(
+      batch.map(([universeId, metrics]) =>
+        client.execute({
+          sql: `UPDATE game SET "visits" = ?, "favoritedCount" = ?, "genre" = ?, "dateCreated" = ? WHERE "universeId" = ?`,
+          args: [
+            metrics.visits,
+            metrics.favoritedCount,
+            metrics.genre,
+            metrics.dateCreated,
+            universeId,
+          ],
+        })
+      )
+    );
+  }
+
+  const totalCcu = snapshotRows.reduce(
+    (sum, [, metrics]) => sum + metrics.playerCount,
+    0
+  );
   console.log(
     `captured ${snapshotRows.length} games | summed CCU: ${totalCcu.toLocaleString()}`
   );

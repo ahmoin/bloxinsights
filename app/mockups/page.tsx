@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { MockupsView } from "@/components/sections/mockups/mockups-view";
 import { ThumbnailEmpty } from "@/components/sections/thumbnails/thumbnail-empty";
-import { getSessionSafe } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { getTopGamesByPlayers } from "@/lib/ccu";
 import { siteConfig } from "@/lib/config";
 import { fetchGameThumbnails } from "@/lib/roblox";
@@ -21,7 +21,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function MockupsPage() {
-  const session = await getSessionSafe(await headers());
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session) {
     return redirect("/login");
   }

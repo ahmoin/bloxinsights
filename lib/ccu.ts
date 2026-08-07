@@ -1,4 +1,4 @@
-import { desc, eq, lte, sql } from "drizzle-orm";
+import { desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   type ExploreGame,
@@ -6,6 +6,7 @@ import {
   fetchGameCreators,
   fetchGameIcons,
   fetchGameMetrics,
+  fetchGameThumbnails,
   fetchLiveCcu,
   type GameMetrics,
 } from "@/lib/roblox";
@@ -626,6 +627,121 @@ export async function getGenreSummary(): Promise<GenreSummary[]> {
       totalVisits: aggregate.totalVisits,
     };
   });
+}
+
+const SHOWCASE_CHART_POINTS = 7;
+
+export interface FeatureShowcaseGame {
+  changePercent: number | null;
+  iconUrl: string | null;
+  name: string;
+  playerCount: number;
+}
+
+export interface FeatureShowcaseData {
+  chartPoints: number[];
+  games: FeatureShowcaseGame[];
+  totalPlayers: number;
+}
+
+export async function getFeatureShowcaseData(
+  limit = 3
+): Promise<FeatureShowcaseData> {
+  const [latest, previous] = await getLatestSnapshotTimestamps(2);
+  if (!latest) {
+    return { chartPoints: [], games: [], totalPlayers: 0 };
+  }
+
+  const recentTimestamps = await getLatestSnapshotTimestamps(
+    SHOWCASE_CHART_POINTS
+  );
+
+  const [topRows, totalRow, chartRows] = await Promise.all([
+    db
+      .select({
+        universeId: gameCcu.universeId,
+        name: game.name,
+        playerCount: gameCcu.playerCount,
+      })
+      .from(gameCcu)
+      .innerJoin(game, eq(game.universeId, gameCcu.universeId))
+      .where(eq(gameCcu.timestamp, latest))
+      .orderBy(desc(gameCcu.playerCount))
+      .limit(limit),
+    db
+      .select({
+        totalPlayers: sql<number>`sum(${gameCcu.playerCount})`.mapWith(Number),
+      })
+      .from(gameCcu)
+      .where(eq(gameCcu.timestamp, latest)),
+    db
+      .select({
+        timestamp: gameCcu.timestamp,
+        ccu: sql<number>`sum(${gameCcu.playerCount})`.mapWith(Number),
+      })
+      .from(gameCcu)
+      .where(inArray(gameCcu.timestamp, recentTimestamps))
+      .groupBy(gameCcu.timestamp)
+      .orderBy(gameCcu.timestamp),
+  ]);
+
+  const previousCounts = previous
+    ? new Map(
+        (
+          await db
+            .select({
+              universeId: gameCcu.universeId,
+              playerCount: gameCcu.playerCount,
+            })
+            .from(gameCcu)
+            .where(eq(gameCcu.timestamp, previous))
+        ).map((row) => [row.universeId, row.playerCount])
+      )
+    : new Map<number, number>();
+
+  const icons = await fetchGameIcons(topRows.map((row) => row.universeId));
+
+  const games = topRows.map((row) => {
+    const previousCount = previousCounts.get(row.universeId);
+    const changePercent =
+      previousCount && previousCount > 0
+        ? ((row.playerCount - previousCount) / previousCount) * 100
+        : null;
+    return {
+      name: row.name,
+      playerCount: row.playerCount,
+      changePercent,
+      iconUrl: icons.get(row.universeId) ?? null,
+    };
+  });
+
+  return {
+    chartPoints: chartRows.map((row) => row.ccu),
+    games,
+    totalPlayers: totalRow[0]?.totalPlayers ?? 0,
+  };
+}
+
+export async function getTopGameThumbnails(limit = 5): Promise<string[]> {
+  const [latest] = await getLatestSnapshotTimestamps(1);
+  if (!latest) {
+    return [];
+  }
+
+  const topRows = await db
+    .select({ universeId: gameCcu.universeId })
+    .from(gameCcu)
+    .where(eq(gameCcu.timestamp, latest))
+    .orderBy(desc(gameCcu.playerCount))
+    .limit(limit);
+
+  const thumbnails = await fetchGameThumbnails(
+    topRows.map((row) => row.universeId)
+  );
+
+  return topRows
+    .map((row) => thumbnails.get(row.universeId))
+    .filter((url): url is string => Boolean(url));
 }
 
 export async function getPlatformCcuHistory() {

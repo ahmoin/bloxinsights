@@ -51,6 +51,7 @@ export default async function LibraryPage() {
               initialThumbnails={thumbnails.map((item) => ({
                 id: item.id,
                 imageUrl: toImageProxyUrl(item.imagePath),
+                kind: item.kind,
                 prompt: item.prompt,
               }))}
             />

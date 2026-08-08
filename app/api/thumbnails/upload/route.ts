@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const imagePath = await storeUploadedThumbnail(file, session.user.id);
   await saveThumbnail({
     imagePath,
+    kind: "thumbnail",
     model: "upload",
     prompt: "Uploaded thumbnail",
     referenceImagePaths: [],

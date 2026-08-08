@@ -217,6 +217,7 @@ export const thumbnail = sqliteTable(
       .default([]),
     prompt: text("prompt").notNull(),
     model: text("model").notNull(),
+    kind: text("kind").notNull().default("thumbnail"),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .$defaultFn(() => new Date())
       .notNull(),

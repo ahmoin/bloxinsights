@@ -14,6 +14,7 @@ import {
   storeGeneratedImage,
   storeReferenceImage,
   THUMBNAIL_MODELS,
+  type ThumbnailKind,
   type ThumbnailModelId,
   toImageProxyUrl,
 } from "@/lib/thumbnails";
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
     typeof modelInput === "string" && modelInput in THUMBNAIL_MODELS
       ? (modelInput as ThumbnailModelId)
       : "fast";
+  const kindInput = formData.get("kind");
+  const kind: ThumbnailKind = kindInput === "icon" ? "icon" : "thumbnail";
   const referenceImageFiles = formData
     .getAll("referenceImages")
     .filter((value): value is File => value instanceof File)
@@ -67,7 +70,7 @@ export async function POST(request: Request) {
     await deductCredits(
       session.user.id,
       creditCost,
-      `Thumbnail generation (${model})`
+      `${kind === "icon" ? "Icon" : "Thumbnail"} generation (${model})`
     );
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
@@ -81,6 +84,7 @@ export async function POST(request: Request) {
     gameConcept:
       typeof gameConcept === "string" && gameConcept ? gameConcept : null,
     idea: typeof idea === "string" && idea ? idea : null,
+    kind,
   });
 
   try {
@@ -109,6 +113,7 @@ export async function POST(request: Request) {
       prompt,
       referenceImages,
       model,
+      kind,
     });
     const imagePath = await storeGeneratedImage(
       generatedImage,
@@ -116,6 +121,7 @@ export async function POST(request: Request) {
     );
     await saveThumbnail({
       imagePath,
+      kind,
       model,
       prompt,
       referenceImagePaths,
@@ -126,7 +132,7 @@ export async function POST(request: Request) {
     await refundCredits(
       session.user.id,
       creditCost,
-      `Refund for failed thumbnail generation (${model})`
+      `Refund for failed ${kind} generation (${model})`
     );
     const message =
       error instanceof Error ? error.message : "Failed to generate thumbnail";

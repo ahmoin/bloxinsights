@@ -55,6 +55,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { LibraryAsset } from "@/lib/assets-shared";
 import { THUMBNAIL_CREDIT_COSTS } from "@/lib/credits-shared";
+import type { ThumbnailKind } from "@/lib/thumbnails";
 import { formatFileSize, formatThumbnailFileName } from "@/lib/utils";
 
 const ROBLOX_GAME_LINK_PATTERN =
@@ -89,9 +90,113 @@ const gameConceptSchema = z
 
 type ThumbnailModel = "fast" | "quality";
 
+function GeneratedResult({
+  generatedImageUrl,
+  kind,
+  kindLabel,
+  onDone,
+  onDownload,
+  onReset,
+}: {
+  generatedImageUrl: string;
+  kind: ThumbnailKind;
+  kindLabel: string;
+  onDone: () => void;
+  onDownload: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      <DialogHeader>
+        <DialogTitle>{kindLabel} ready</DialogTitle>
+        <DialogDescription>
+          Here's what we generated. You can create another or close this dialog.
+        </DialogDescription>
+      </DialogHeader>
+      <Image
+        alt={`Generated ${kind}`}
+        className={
+          kind === "icon"
+            ? "mx-auto aspect-square w-1/2 rounded-md border"
+            : "w-full rounded-md border"
+        }
+        height={kind === "icon" ? 384 : 432}
+        src={generatedImageUrl}
+        unoptimized
+        width={kind === "icon" ? 384 : 768}
+      />
+      <DialogFooter className="sm:justify-between">
+        <div className="flex gap-2">
+          <Button asChild size="icon" variant="outline">
+            <a
+              aria-label="Open in new tab"
+              href={generatedImageUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <ExternalLinkIcon />
+            </a>
+          </Button>
+          <Button
+            aria-label={`Download ${kind}`}
+            onClick={onDownload}
+            size="icon"
+            type="button"
+            variant="outline"
+          >
+            <DownloadIcon />
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={onReset} type="button" variant="outline">
+            Create Another
+          </Button>
+          <Button onClick={onDone} type="button">
+            Done
+          </Button>
+        </div>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function KindToggle({
+  kind,
+  onChange,
+}: {
+  kind: ThumbnailKind;
+  onChange: (kind: ThumbnailKind) => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <Button
+        aria-pressed={kind === "thumbnail"}
+        className="flex-1"
+        onClick={() => onChange("thumbnail")}
+        size="sm"
+        type="button"
+        variant={kind === "thumbnail" ? "default" : "outline"}
+      >
+        Thumbnail
+      </Button>
+      <Button
+        aria-pressed={kind === "icon"}
+        className="flex-1"
+        onClick={() => onChange("icon")}
+        size="sm"
+        type="button"
+        variant={kind === "icon" ? "default" : "outline"}
+      >
+        Icon
+      </Button>
+    </div>
+  );
+}
+
 export function CreateThumbnailDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<ThumbnailKind>("thumbnail");
   const [tab, setTab] = useState("with-game");
   const [gameLink, setGameLink] = useState("");
   const [idea, setIdea] = useState("");
@@ -115,6 +220,7 @@ export function CreateThumbnailDialog() {
   const hasInsufficientCredits = balance < creditCost;
   const usedReferenceSlots = referenceImages.length + selectedAssets.length;
   const remainingReferenceSlots = MAX_REFERENCE_IMAGES - usedReferenceSlots;
+  const kindLabel = kind === "icon" ? "Icon" : "Thumbnail";
 
   useEffect(() => {
     if (!open) {
@@ -208,6 +314,7 @@ export function CreateThumbnailDialog() {
   };
 
   const resetForm = () => {
+    setKind("thumbnail");
     setTab("with-game");
     setGameLink("");
     setIdea("");
@@ -258,6 +365,7 @@ export function CreateThumbnailDialog() {
       formData.set("gameConcept", gameConcept);
     }
     formData.set("model", model);
+    formData.set("kind", kind);
     for (const image of referenceImages) {
       formData.append("referenceImages", image.file);
     }
@@ -288,7 +396,7 @@ export function CreateThumbnailDialog() {
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate thumbnail"
+        error instanceof Error ? error.message : `Failed to generate ${kind}`
       );
     } finally {
       setIsGenerating(false);
@@ -306,54 +414,14 @@ export function CreateThumbnailDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         {generatedImageUrl ? (
-          <div className="flex min-w-0 flex-col gap-6">
-            <DialogHeader>
-              <DialogTitle>Thumbnail ready</DialogTitle>
-              <DialogDescription>
-                Here's what we generated. You can create another or close this
-                dialog.
-              </DialogDescription>
-            </DialogHeader>
-            <Image
-              alt="Generated thumbnail"
-              className="w-full rounded-md border"
-              height={432}
-              src={generatedImageUrl}
-              unoptimized
-              width={768}
-            />
-            <DialogFooter className="sm:justify-between">
-              <div className="flex gap-2">
-                <Button asChild size="icon" variant="outline">
-                  <a
-                    aria-label="Open in new tab"
-                    href={generatedImageUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    <ExternalLinkIcon />
-                  </a>
-                </Button>
-                <Button
-                  aria-label="Download thumbnail"
-                  onClick={handleDownload}
-                  size="icon"
-                  type="button"
-                  variant="outline"
-                >
-                  <DownloadIcon />
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={resetForm} type="button" variant="outline">
-                  Create Another
-                </Button>
-                <Button onClick={() => setOpen(false)} type="button">
-                  Done
-                </Button>
-              </div>
-            </DialogFooter>
-          </div>
+          <GeneratedResult
+            generatedImageUrl={generatedImageUrl}
+            kind={kind}
+            kindLabel={kindLabel}
+            onDone={() => setOpen(false)}
+            onDownload={handleDownload}
+            onReset={resetForm}
+          />
         ) : (
           <form
             className="flex min-w-0 flex-col gap-6"
@@ -361,11 +429,12 @@ export function CreateThumbnailDialog() {
             onSubmit={handleSubmit}
           >
             <DialogHeader>
-              <DialogTitle>Create Thumbnail</DialogTitle>
+              <DialogTitle>Create {kindLabel}</DialogTitle>
               <DialogDescription>
                 Use your game link, or tell us about the game you're making.
               </DialogDescription>
             </DialogHeader>
+            <KindToggle kind={kind} onChange={setKind} />
             <Tabs className="gap-4" onValueChange={setTab} value={tab}>
               <TabsList className="w-full">
                 <TabsTrigger value="with-game">I have a game</TabsTrigger>
@@ -619,7 +688,7 @@ export function CreateThumbnailDialog() {
                 {isGenerating && <Loader2Icon className="animate-spin" />}
                 {isGenerating
                   ? `Generating... ${formatElapsedTime(elapsedSeconds)}`
-                  : `Create Thumbnail · ${creditCost} credits`}
+                  : `Create ${kindLabel} · ${creditCost} credits`}
               </Button>
             </DialogFooter>
           </form>

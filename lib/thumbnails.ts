@@ -7,7 +7,6 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { thumbnail } from "@/lib/schema";
 
-const THUMBNAIL_ASPECT_RATIO = "16:9";
 const PROMPT_WRITER_MODEL = "google/gemini-2.5-flash";
 
 export const THUMBNAIL_MODELS = {
@@ -17,6 +16,13 @@ export const THUMBNAIL_MODELS = {
 
 export type ThumbnailModelId = keyof typeof THUMBNAIL_MODELS;
 
+export type ThumbnailKind = "icon" | "thumbnail";
+
+const THUMBNAIL_ASPECT_RATIOS = {
+  icon: "1:1",
+  thumbnail: "16:9",
+} as const satisfies Record<ThumbnailKind, `${number}:${number}`>;
+
 const thumbnailPromptSchema = z.object({
   prompt: z.string(),
 });
@@ -25,19 +31,32 @@ export interface ThumbnailPromptInput {
   gameConcept: string | null;
   gameLink: string | null;
   idea: string | null;
+  kind: ThumbnailKind;
 }
 
 function buildSystemPrompt(input: ThumbnailPromptInput): string {
   const provided = [
     input.gameLink && "a game link",
     input.gameConcept && "a game concept",
-    input.idea && "a thumbnail idea",
+    input.idea && `a ${input.kind} idea`,
   ].filter(Boolean);
 
   const providedLine =
     provided.length > 0
       ? `You will be given ${provided.join(" and ")}. Weave those details into the prompt.`
       : "You will not be given any details about the game — invent something fitting for a generic Roblox game.";
+
+  if (input.kind === "icon") {
+    return `You write the final image-generation prompt for a Roblox game icon generator. Follow these rules exactly:
+
+- Always start the prompt with "A high-quality Roblox game icon."
+- ${providedLine}
+- The icon is square and viewed at small sizes, so describe a single bold, centered subject with a simple, uncluttered background. Avoid busy scenes with multiple characters or fine detail that would be lost when scaled down.
+- Unless the user's concept or idea already specifies a character, avatar, or player appearance, default to describing "a classic blocky 'Bacon Hair' character with 'Epic Face'" as the centered subject.
+- Always end the prompt with instructions for the visual style: high saturation, plastic textures, strong silhouette, no text.
+- Never include any instruction to render text, letters, words, or writing in the image, even if the user explicitly asked for text in their idea or concept — silently drop any such request instead of including it.
+- Output only the final prompt, written as flowing descriptive sentences a text-to-image model should follow.`;
+  }
 
   return `You write the final image-generation prompt for a Roblox GFX thumbnail generator. Follow these rules exactly:
 
@@ -55,7 +74,8 @@ export async function buildThumbnailPrompt(
   const details = [
     input.gameLink && `Game link: ${input.gameLink}`,
     input.gameConcept && `Game concept: ${input.gameConcept}`,
-    input.idea && `Thumbnail idea: ${input.idea}`,
+    input.idea &&
+      `${input.kind === "icon" ? "Icon" : "Thumbnail"} idea: ${input.idea}`,
   ].filter(Boolean);
 
   const { object } = await generateObject({
@@ -68,6 +88,7 @@ export async function buildThumbnailPrompt(
 }
 
 export interface GenerateThumbnailInput {
+  kind: ThumbnailKind;
   model?: ThumbnailModelId;
   prompt: string;
   referenceImages?: string[];
@@ -81,7 +102,7 @@ export async function generateThumbnail(
     input.referenceImages && input.referenceImages.length > 0;
 
   const { image } = await generateImage({
-    aspectRatio: THUMBNAIL_ASPECT_RATIO,
+    aspectRatio: THUMBNAIL_ASPECT_RATIOS[input.kind],
     model: openrouter.imageModel(modelId),
     prompt: hasReferenceImages
       ? { images: input.referenceImages ?? [], text: input.prompt }
@@ -135,6 +156,7 @@ export async function storeUploadedThumbnail(
 
 export interface SaveThumbnailInput {
   imagePath: string;
+  kind: ThumbnailKind;
   model: ThumbnailModelId | "upload";
   prompt: string;
   referenceImagePaths: string[];

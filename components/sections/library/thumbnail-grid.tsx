@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 export interface LibraryThumbnail {
   id: string;
   imageUrl: string;
+  kind: string;
   prompt: string;
 }
 
@@ -114,8 +115,12 @@ export function ThumbnailGrid({
             >
               <Image
                 alt={item.prompt}
-                className="aspect-video w-full object-cover"
-                height={216}
+                className={
+                  item.kind === "icon"
+                    ? "aspect-square w-full object-cover"
+                    : "aspect-video w-full object-cover"
+                }
+                height={item.kind === "icon" ? 384 : 216}
                 src={item.imageUrl}
                 unoptimized
                 width={384}

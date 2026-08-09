@@ -71,7 +71,7 @@ const gameMetricsSchema = z.object({
   created: z.string(),
   favoritedCount: z.number().default(0),
   visits: z.number().default(0),
-  genre: z.string().nullish(),
+  genre_l1: z.string().nullish(),
 });
 
 const gameMetricsResponseSchema = z.object({
@@ -299,7 +299,8 @@ async function fetchGameMetricsBatch(
       metricsByUniverseId.set(entry.id, {
         dateCreated: new Date(entry.created),
         favoritedCount: entry.favoritedCount,
-        genre: entry.genre && entry.genre.length > 0 ? entry.genre : null,
+        genre:
+          entry.genre_l1 && entry.genre_l1.length > 0 ? entry.genre_l1 : null,
         visits: entry.visits,
       });
     }

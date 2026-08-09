@@ -441,6 +441,7 @@ async function getLatestSnapshotCount(timestamp: Date): Promise<number> {
 
 export async function getGamesList({
   filters,
+  genre,
   page = DEFAULT_GAMES_PAGE,
   pageSize = DEFAULT_GAMES_PAGE_SIZE,
   query,
@@ -448,6 +449,7 @@ export async function getGamesList({
   sort,
 }: {
   filters?: GamesListFilters;
+  genre?: string;
   page?: number;
   pageSize?: number;
   query?: string;
@@ -498,10 +500,16 @@ export async function getGamesList({
     sort
   );
 
+  const genreMatched = genre
+    ? ranked.filter((row) => (row.genre ?? UNCATEGORIZED_GENRE) === genre)
+    : ranked;
+
   const normalizedQuery = query?.trim().toLowerCase();
   const nameMatched = normalizedQuery
-    ? ranked.filter((row) => row.name.toLowerCase().includes(normalizedQuery))
-    : ranked;
+    ? genreMatched.filter((row) =>
+        row.name.toLowerCase().includes(normalizedQuery)
+      )
+    : genreMatched;
 
   const filtered = filters
     ? nameMatched.filter((row) => matchesFilters(row, filters))

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { GenreTabs } from "@/components/sections/tables/genre-tabs";
 import { TopTable } from "@/components/sections/tables/top-table";
 import { Button } from "@/components/ui/button";
-import { type GamesListSort, getGamesList } from "@/lib/ccu";
+import { type GamesListSort, getGamesList, getGenreSummary } from "@/lib/ccu";
 
 const TOP_GAMES_LIMIT = 100;
 const DEFAULT_SORT: GamesListSort = "-playing";
@@ -23,12 +24,16 @@ export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string }>;
+  searchParams: Promise<{ genre?: string; sort?: string }>;
 }) {
   const params = await searchParams;
   const sort = isValidSort(params.sort) ? params.sort : DEFAULT_SORT;
+  const genre = params.genre?.trim() || undefined;
 
-  const { games } = await getGamesList({ pageSize: TOP_GAMES_LIMIT, sort });
+  const [{ games }, genres] = await Promise.all([
+    getGamesList({ genre, pageSize: TOP_GAMES_LIMIT, sort }),
+    getGenreSummary(),
+  ]);
   const today = new Date().toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
@@ -43,6 +48,9 @@ export default async function Page({
           <p className="text-muted-foreground text-sm">
             The top Roblox games by Players (CCU) on {today}
           </p>
+        </div>
+        <div className="px-4 lg:px-6">
+          <GenreTabs genre={genre} genres={genres} sort={sort} />
         </div>
         <div className="flex flex-col gap-4 px-4 lg:px-6">
           <TopTable games={games} sort={sort} />

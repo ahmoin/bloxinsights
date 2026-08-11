@@ -295,20 +295,48 @@ async function main() {
   }
 
   for (const batch of chunkArray(snapshotRows, UPSERT_CHUNK_SIZE)) {
-    await Promise.all(
-      batch.map(([universeId, metrics]) =>
-        client.execute({
-          sql: `UPDATE game SET "visits" = ?, "favoritedCount" = ?, "genre" = ?, "dateCreated" = ? WHERE "universeId" = ?`,
-          args: [
-            metrics.visits,
-            metrics.favoritedCount,
-            metrics.genre,
-            metrics.dateCreated,
-            universeId,
-          ],
-        })
-      )
+    const universeIds = batch.map(([universeId]) => universeId);
+    const placeholders = universeIds.map(() => "?").join(", ");
+    const existing = await client.execute({
+      sql: `SELECT "universeId", "rootPlaceId", "name" FROM game WHERE "universeId" IN (${placeholders})`,
+      args: universeIds,
+    });
+    const existingByUniverseId = new Map(
+      existing.rows.map((row) => [
+        Number(row.universeId),
+        { rootPlaceId: row.rootPlaceId, name: row.name },
+      ])
     );
+
+    const rows = batch.filter(([universeId]) =>
+      existingByUniverseId.has(universeId)
+    );
+    if (rows.length === 0) {
+      continue;
+    }
+
+    const values = rows.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
+    const args = rows.flatMap(([universeId, metrics]) => {
+      const existingRow = existingByUniverseId.get(universeId);
+      return [
+        universeId,
+        existingRow.rootPlaceId,
+        existingRow.name,
+        metrics.visits,
+        metrics.favoritedCount,
+        metrics.genre,
+        metrics.dateCreated,
+      ];
+    });
+    await client.execute({
+      sql: `INSERT INTO game ("universeId", "rootPlaceId", "name", "visits", "favoritedCount", "genre", "dateCreated") VALUES ${values}
+        ON CONFLICT("universeId") DO UPDATE SET
+          "visits" = excluded."visits",
+          "favoritedCount" = excluded."favoritedCount",
+          "genre" = excluded."genre",
+          "dateCreated" = excluded."dateCreated"`,
+      args,
+    });
   }
 
   const totalCcu = snapshotRows.reduce(

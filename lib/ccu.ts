@@ -254,19 +254,52 @@ async function updateGameMetrics(
 ) {
   const entries = [...metricsByUniverseId.entries()];
   for (const batch of chunkArray(entries, METRICS_UPDATE_CHUNK_SIZE)) {
-    await Promise.all(
-      batch.map(([universeId, metrics]) =>
-        db
-          .update(game)
-          .set({
-            dateCreated: metrics.dateCreated,
-            favoritedCount: metrics.favoritedCount,
-            genre: metrics.genre,
-            visits: metrics.visits,
-          })
-          .where(eq(game.universeId, universeId))
-      )
+    const universeIds = batch.map(([universeId]) => universeId);
+    const existingRows = await db
+      .select({
+        universeId: game.universeId,
+        rootPlaceId: game.rootPlaceId,
+        name: game.name,
+      })
+      .from(game)
+      .where(inArray(game.universeId, universeIds));
+    const existingByUniverseId = new Map(
+      existingRows.map((row) => [row.universeId, row])
     );
+
+    const values = batch.flatMap(([universeId, metrics]) => {
+      const existing = existingByUniverseId.get(universeId);
+      if (!existing) {
+        return [];
+      }
+      return [
+        {
+          universeId,
+          rootPlaceId: existing.rootPlaceId,
+          name: existing.name,
+          dateCreated: metrics.dateCreated,
+          favoritedCount: metrics.favoritedCount,
+          genre: metrics.genre,
+          visits: metrics.visits,
+        },
+      ];
+    });
+    if (values.length === 0) {
+      continue;
+    }
+
+    await db
+      .insert(game)
+      .values(values)
+      .onConflictDoUpdate({
+        target: game.universeId,
+        set: {
+          dateCreated: sql`excluded."dateCreated"`,
+          favoritedCount: sql`excluded."favoritedCount"`,
+          genre: sql`excluded."genre"`,
+          visits: sql`excluded."visits"`,
+        },
+      });
   }
 }
 

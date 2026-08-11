@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/http";
 import { config } from "dotenv";
 
 config({ path: ".env.local" });

@@ -298,13 +298,17 @@ async function main() {
     const universeIds = batch.map(([universeId]) => universeId);
     const placeholders = universeIds.map(() => "?").join(", ");
     const existing = await client.execute({
-      sql: `SELECT "universeId", "rootPlaceId", "name" FROM game WHERE "universeId" IN (${placeholders})`,
+      sql: `SELECT "universeId", "rootPlaceId", "name", "createdAt" FROM game WHERE "universeId" IN (${placeholders})`,
       args: universeIds,
     });
     const existingByUniverseId = new Map(
       existing.rows.map((row) => [
         Number(row.universeId),
-        { rootPlaceId: row.rootPlaceId, name: row.name },
+        {
+          rootPlaceId: row.rootPlaceId,
+          name: row.name,
+          createdAt: row.createdAt,
+        },
       ])
     );
 
@@ -315,13 +319,15 @@ async function main() {
       continue;
     }
 
-    const values = rows.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
+    const values = rows.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
     const args = rows.flatMap(([universeId, metrics]) => {
       const existingRow = existingByUniverseId.get(universeId);
       return [
         universeId,
         existingRow.rootPlaceId,
         existingRow.name,
+        existingRow.createdAt,
+        timestampSeconds,
         metrics.visits,
         metrics.favoritedCount,
         metrics.genre,
@@ -329,8 +335,9 @@ async function main() {
       ];
     });
     await client.execute({
-      sql: `INSERT INTO game ("universeId", "rootPlaceId", "name", "visits", "favoritedCount", "genre", "dateCreated") VALUES ${values}
+      sql: `INSERT INTO game ("universeId", "rootPlaceId", "name", "createdAt", "updatedAt", "visits", "favoritedCount", "genre", "dateCreated") VALUES ${values}
         ON CONFLICT("universeId") DO UPDATE SET
+          "updatedAt" = excluded."updatedAt",
           "visits" = excluded."visits",
           "favoritedCount" = excluded."favoritedCount",
           "genre" = excluded."genre",

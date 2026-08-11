@@ -281,6 +281,7 @@ async function updateGameMetrics(
           favoritedCount: metrics.favoritedCount,
           genre: metrics.genre,
           visits: metrics.visits,
+          updatedAt: new Date(),
         },
       ];
     });
@@ -298,6 +299,7 @@ async function updateGameMetrics(
           favoritedCount: sql`excluded."favoritedCount"`,
           genre: sql`excluded."genre"`,
           visits: sql`excluded."visits"`,
+          updatedAt: sql`excluded."updatedAt"`,
         },
       });
   }

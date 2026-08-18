@@ -7,6 +7,7 @@ import {
   CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -26,6 +27,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CcuPoint } from "@/lib/ccu";
+import { getPeakStatsLast24Hours } from "@/lib/ccu-stats";
 
 export const description = "An interactive area chart";
 
@@ -63,6 +65,10 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
   const latestTime = data.length
     ? Math.max(...data.map((point) => new Date(point.timestamp).getTime()))
     : 0;
+  const currentCcu =
+    data.find((point) => new Date(point.timestamp).getTime() === latestTime)
+      ?.ccu ?? 0;
+  const peakStats = getPeakStatsLast24Hours(data);
 
   let hoursToSubtract = 14 * 24;
   if (timeRange === "7d") {
@@ -73,20 +79,20 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
   const startDate = new Date(latestTime);
   startDate.setHours(startDate.getHours() - hoursToSubtract);
 
-  const filteredData = data.filter(
-    (point) => new Date(point.timestamp) >= startDate
-  );
+  const filteredData = data
+    .filter((point) => new Date(point.timestamp) >= startDate)
+    .map((point) => ({
+      ...point,
+      time: new Date(point.timestamp).getTime(),
+    }));
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Total Concurrent Users (CCU)</CardTitle>
-        <CardDescription>
-          <span className="@[540px]/card:block hidden">
-            Total for the last 14 days ({tzName})
-          </span>
-          <span className="@[540px]/card:hidden">Last 14 days ({tzName})</span>
-        </CardDescription>
+        <CardDescription>Roblox Stats</CardDescription>
+        <CardTitle className="font-semibold text-2xl tabular-nums">
+          {currentCcu.toLocaleString()} Players (CCU)
+        </CardTitle>
         <CardAction>
           <ToggleGroup
             className="@[767px]/card:flex hidden *:data-[slot=toggle-group-item]:px-4!"
@@ -144,8 +150,10 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
             <CartesianGrid vertical={false} />
             <XAxis
               axisLine={false}
-              dataKey="timestamp"
+              dataKey="time"
+              domain={["dataMin", "dataMax"]}
               minTickGap={32}
+              scale="time"
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return date.toLocaleDateString("en-US", {
@@ -155,6 +163,7 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
               }}
               tickLine={false}
               tickMargin={8}
+              type="number"
             />
             <YAxis
               axisLine={false}
@@ -173,8 +182,9 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
               content={
                 <ChartTooltipContent
                   indicator="dot"
-                  labelFormatter={(value) => {
-                    const date = new Date(value);
+                  labelFormatter={(_value, payload) => {
+                    const time = payload?.[0]?.payload?.time;
+                    const date = new Date(time);
                     return `${date.toLocaleString("en-US", {
                       month: "short",
                       day: "numeric",
@@ -195,6 +205,11 @@ export function ChartAreaInteractive({ data }: { data: CcuPoint[] }) {
           </AreaChart>
         </ChartContainer>
       </CardContent>
+      <CardFooter className="text-muted-foreground text-sm">
+        {peakStats.peak > 0
+          ? `${peakStats.peak.toLocaleString()} peak CCU (last 24h)`
+          : "Waiting on data"}
+      </CardFooter>
     </Card>
   );
 }

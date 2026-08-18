@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { NotificationPreferencesForm } from "@/components/sections/settings/notification-preferences-form";
 import { SignOutButton } from "@/components/sections/settings/sign-out-button";
 import { ThemeToggleGroup } from "@/components/sections/settings/theme-toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { siteConfig } from "@/lib/config";
+import { getNotificationPreferences } from "@/lib/notifications";
 
 export const metadata: Metadata = {
   title: `Settings | ${siteConfig.name}`,
@@ -34,6 +36,7 @@ export default async function SettingsPage() {
 
   const { user } = session;
   const initials = user.name.slice(0, INITIALS_LENGTH).toUpperCase();
+  const notificationPreferences = await getNotificationPreferences(user.id);
 
   return (
     <AppShell title="Settings">
@@ -71,7 +74,7 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="account">
           <CardHeader>
             <CardTitle>Account</CardTitle>
             <CardDescription>
@@ -80,6 +83,29 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <SignOutButton />
+          </CardContent>
+        </Card>
+
+        <Card id="billing">
+          <CardHeader>
+            <CardTitle>Billing</CardTitle>
+            <CardDescription>
+              Billing is not available yet. Check back soon.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card id="notifications">
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>
+              Choose what Bloxinsights notifies you about.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NotificationPreferencesForm
+              initialPreferences={notificationPreferences}
+            />
           </CardContent>
         </Card>
       </div>

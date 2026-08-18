@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { siteConfig } from "@/lib/config";
 import { db } from "@/lib/db";
+import { createWelcomeNotification } from "@/lib/notifications";
 // biome-ignore lint/performance/noNamespaceImport: schema object is required for type inference and relational queries
 import * as schema from "@/lib/schema";
 
@@ -10,6 +11,15 @@ export const auth = betterAuth({
     provider: "sqlite",
     schema,
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (createdUser) => {
+          await createWelcomeNotification(createdUser.id);
+        },
+      },
+    },
+  },
   plugins: [],
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   trustedOrigins: ["http://localhost:3000", siteConfig.url],

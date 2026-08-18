@@ -131,10 +131,15 @@ export const creditTransactionRelations = relations(
   })
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   creditTransactions: many(creditTransaction),
+  notifications: many(notification),
+  notificationPreference: one(notificationPreference, {
+    fields: [user.id],
+    references: [notificationPreference.userId],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -258,6 +263,67 @@ export const assetRelations = relations(asset, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const notification = sqliteTable(
+  "notification",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: text("type", {
+      enum: ["system", "product_update", "billing", "ccu_alert"],
+    }).notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    url: text("url"),
+    read: integer("read", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("notification_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+    index("notification_userId_read_idx").on(table.userId, table.read),
+  ]
+);
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+  user: one(user, {
+    fields: [notification.userId],
+    references: [user.id],
+  }),
+}));
+
+export const notificationPreference = sqliteTable("notificationPreference", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  productUpdates: integer("productUpdates", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  ccuAlerts: integer("ccuAlerts", { mode: "boolean" }).notNull().default(true),
+  emailNotifications: integer("emailNotifications", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const notificationPreferenceRelations = relations(
+  notificationPreference,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [notificationPreference.userId],
+      references: [user.id],
+    }),
+  })
+);
 
 export const contactMessage = sqliteTable("contactMessage", {
   id: text("id").primaryKey(),

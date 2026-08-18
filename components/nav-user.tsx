@@ -113,17 +113,23 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <CircleUserRoundIcon />
-                Account
+              <DropdownMenuItem asChild>
+                <Link href="/settings#account">
+                  <CircleUserRoundIcon />
+                  Account
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
+              <DropdownMenuItem asChild>
+                <Link href="/settings#billing">
+                  <CreditCardIcon />
+                  Billing
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
+              <DropdownMenuItem asChild>
+                <Link href="/settings#notifications">
+                  <BellIcon />
+                  Notifications
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

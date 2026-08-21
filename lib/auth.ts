@@ -28,5 +28,9 @@ export const auth = betterAuth({
       clientId: process.env.ROBLOX_CLIENT_ID as string,
       clientSecret: process.env.ROBLOX_CLIENT_SECRET as string,
     },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
   },
 });

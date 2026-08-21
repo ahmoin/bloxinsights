@@ -43,6 +43,21 @@ export function UserAuthForm({
             {isLoading ? <Spinner /> : <Icons.roblox className="mr-2 size-4" />}{" "}
             {state === "login" ? "Log in" : "Sign up"} with Roblox
           </Button>
+          <Button
+            className="w-full"
+            disabled={isLoading}
+            onClick={async () => {
+              setIsLoading(true);
+              await authClient.signIn.social({
+                provider: "google",
+                callbackURL: "/dashboard",
+              });
+            }}
+            type="button"
+          >
+            {isLoading ? <Spinner /> : <Icons.google className="mr-2 size-4" />}{" "}
+            {state === "login" ? "Log in" : "Sign up"} with Google
+          </Button>
         </div>
       </div>
       <FieldDescription className="px-6 text-center">

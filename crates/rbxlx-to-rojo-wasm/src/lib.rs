@@ -19,8 +19,11 @@ pub fn convert(
     exclude_init_meta: bool,
 ) -> Result<JsValue, JsValue> {
     let tree = match extension {
-        "rbxlx" | "rbxmx" => rbx_xml::from_reader_default(bytes)
-            .map_err(|error| JsValue::from_str(&error.to_string()))?,
+        "rbxlx" | "rbxmx" => {
+            let sanitized = String::from_utf8_lossy(bytes).into_owned();
+            rbx_xml::from_reader_default(sanitized.as_bytes())
+                .map_err(|error| JsValue::from_str(&error.to_string()))?
+        }
         "rbxl" | "rbxm" => rbx_binary::from_reader(bytes)
             .map_err(|error| JsValue::from_str(&error.to_string()))?,
         _ => {

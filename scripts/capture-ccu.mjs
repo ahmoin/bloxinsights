@@ -1,7 +1,23 @@
-import { createClient } from "@libsql/client/http";
 import { config } from "dotenv";
+import postgres from "postgres";
 
 config({ path: ".env.local" });
+
+function rowPlaceholders(startIndex, columnCount) {
+  const cells = [];
+  for (let i = 0; i < columnCount; i++) {
+    cells.push(`$${startIndex + i}`);
+  }
+  return `(${cells.join(", ")})`;
+}
+
+function valuesClause(rowCount, columnCount) {
+  const rows = [];
+  for (let i = 0; i < rowCount; i++) {
+    rows.push(rowPlaceholders(i * columnCount + 1, columnCount));
+  }
+  return rows.join(", ");
+}
 
 const EXPLORE_SORTS_URL = "https://apis.roblox.com/explore-api/v1/get-sorts";
 const OMNI_SEARCH_URL = "https://apis.roblox.com/search-api/omni-search";
@@ -198,31 +214,25 @@ async function fetchCcuBatch(universeIds, attempt = 1) {
       visits: entry.visits ?? 0,
       favoritedCount: entry.favoritedCount ?? 0,
       genre: entry.genre && entry.genre.length > 0 ? entry.genre : null,
-      dateCreated: entry.created
-        ? Math.floor(new Date(entry.created).getTime() / 1000)
-        : null,
+      dateCreated: entry.created ? new Date(entry.created) : null,
     });
   }
   return metricsByUniverseId;
 }
 
 async function main() {
-  const client = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
+  const client = postgres(process.env.DATABASE_URL);
 
   const timestamp = roundToNearestHalfHour(new Date());
-  const timestampSeconds = Math.floor(timestamp.getTime() / 1000);
   console.log("bucket:", timestamp.toISOString());
 
-  const existing = await client.execute({
-    sql: "SELECT id FROM gameCcu WHERE timestamp = ? LIMIT 1",
-    args: [timestampSeconds],
-  });
-  if (existing.rows.length > 0) {
+  const existing = await client.unsafe(
+    'SELECT id FROM "gameCcu" WHERE timestamp = $1 LIMIT 1',
+    [timestamp]
+  );
+  if (existing.length > 0) {
     console.log("bucket already captured, skipping");
-    client.close();
+    await client.end();
     return;
   }
 
@@ -230,7 +240,7 @@ async function main() {
   console.log("discovered games:", discoveredGames.length);
 
   for (const batch of chunkArray(discoveredGames, UPSERT_CHUNK_SIZE)) {
-    const values = batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+    const values = valuesClause(batch.length, 8);
     const args = batch.flatMap((g) => [
       g.universeId,
       g.rootPlaceId,
@@ -238,11 +248,11 @@ async function main() {
       g.playerCount,
       g.totalUpVotes ?? 0,
       g.totalDownVotes ?? 0,
-      timestampSeconds,
-      timestampSeconds,
+      timestamp,
+      timestamp,
     ]);
-    await client.execute({
-      sql: `INSERT INTO game ("universeId", "rootPlaceId", "name", "playerCount", "totalUpVotes", "totalDownVotes", "createdAt", "updatedAt") VALUES ${values}
+    await client.unsafe(
+      `INSERT INTO "game" ("universeId", "rootPlaceId", "name", "playerCount", "totalUpVotes", "totalDownVotes", "createdAt", "updatedAt") VALUES ${values}
         ON CONFLICT("universeId") DO UPDATE SET
           "rootPlaceId" = excluded."rootPlaceId",
           "name" = excluded."name",
@@ -250,12 +260,12 @@ async function main() {
           "totalUpVotes" = excluded."totalUpVotes",
           "totalDownVotes" = excluded."totalDownVotes",
           "updatedAt" = excluded."updatedAt"`,
-      args,
-    });
+      args
+    );
   }
 
-  const registry = await client.execute("SELECT universeId FROM game");
-  const universeIds = registry.rows.map((row) => Number(row.universeId));
+  const registry = await client.unsafe('SELECT "universeId" FROM "game"');
+  const universeIds = registry.map((row) => Number(row.universeId));
   console.log("registry size:", universeIds.length);
 
   const metricsByUniverseId = new Map();
@@ -282,27 +292,27 @@ async function main() {
     console.log("dropped unknown universeIds:", droppedIds.join(", "));
   }
   for (const batch of chunkArray(snapshotRows, SNAPSHOT_CHUNK_SIZE)) {
-    const values = batch.map(() => "(?, ?, ?)").join(", ");
+    const values = valuesClause(batch.length, 3);
     const args = batch.flatMap(([universeId, metrics]) => [
       universeId,
       metrics.playerCount,
-      timestampSeconds,
+      timestamp,
     ]);
-    await client.execute({
-      sql: `INSERT INTO gameCcu ("universeId", "playerCount", "timestamp") VALUES ${values}`,
-      args,
-    });
+    await client.unsafe(
+      `INSERT INTO "gameCcu" ("universeId", "playerCount", "timestamp") VALUES ${values}`,
+      args
+    );
   }
 
   for (const batch of chunkArray(snapshotRows, UPSERT_CHUNK_SIZE)) {
-    const universeIds = batch.map(([universeId]) => universeId);
-    const placeholders = universeIds.map(() => "?").join(", ");
-    const existing = await client.execute({
-      sql: `SELECT "universeId", "rootPlaceId", "name", "createdAt" FROM game WHERE "universeId" IN (${placeholders})`,
-      args: universeIds,
-    });
+    const batchUniverseIds = batch.map(([universeId]) => universeId);
+    const placeholders = batchUniverseIds.map((_, i) => `$${i + 1}`).join(", ");
+    const existing = await client.unsafe(
+      `SELECT "universeId", "rootPlaceId", "name", "createdAt" FROM "game" WHERE "universeId" IN (${placeholders})`,
+      batchUniverseIds
+    );
     const existingByUniverseId = new Map(
-      existing.rows.map((row) => [
+      existing.map((row) => [
         Number(row.universeId),
         {
           rootPlaceId: row.rootPlaceId,
@@ -319,7 +329,7 @@ async function main() {
       continue;
     }
 
-    const values = rows.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+    const values = valuesClause(rows.length, 9);
     const args = rows.flatMap(([universeId, metrics]) => {
       const existingRow = existingByUniverseId.get(universeId);
       return [
@@ -327,23 +337,23 @@ async function main() {
         existingRow.rootPlaceId,
         existingRow.name,
         existingRow.createdAt,
-        timestampSeconds,
+        timestamp,
         metrics.visits,
         metrics.favoritedCount,
         metrics.genre,
         metrics.dateCreated,
       ];
     });
-    await client.execute({
-      sql: `INSERT INTO game ("universeId", "rootPlaceId", "name", "createdAt", "updatedAt", "visits", "favoritedCount", "genre", "dateCreated") VALUES ${values}
+    await client.unsafe(
+      `INSERT INTO "game" ("universeId", "rootPlaceId", "name", "createdAt", "updatedAt", "visits", "favoritedCount", "genre", "dateCreated") VALUES ${values}
         ON CONFLICT("universeId") DO UPDATE SET
           "updatedAt" = excluded."updatedAt",
           "visits" = excluded."visits",
           "favoritedCount" = excluded."favoritedCount",
           "genre" = excluded."genre",
           "dateCreated" = excluded."dateCreated"`,
-      args,
-    });
+      args
+    );
   }
 
   const totalCcu = snapshotRows.reduce(
@@ -353,7 +363,7 @@ async function main() {
   console.log(
     `captured ${snapshotRows.length} games | summed CCU: ${totalCcu.toLocaleString()}`
   );
-  client.close();
+  await client.end();
 }
 
 await main();

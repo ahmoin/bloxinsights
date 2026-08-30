@@ -1,40 +1,42 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
+  boolean,
   index,
   integer,
-  sqliteTable,
+  json,
+  pgTable,
   text,
+  timestamp,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 
-export const user = sqliteTable("user", {
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("emailVerified", { mode: "boolean" })
-    .default(false)
-    .notNull(),
+  emailVerified: boolean("emailVerified").default(false).notNull(),
   image: text("image"),
   creditBalance: integer("creditBalance").notNull().default(0),
-  createdAt: integer("createdAt", { mode: "timestamp" })
+  createdAt: timestamp("createdAt")
     .$defaultFn(() => new Date())
     .notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" })
+  updatedAt: timestamp("updatedAt")
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const session = sqliteTable(
+export const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
-    expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
     token: text("token").notNull().unique(),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: integer("updatedAt", { mode: "timestamp" })
+    updatedAt: timestamp("updatedAt")
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date())
       .notNull(),
@@ -47,7 +49,7 @@ export const session = sqliteTable(
   (table) => [index("session_userId_idx").on(table.userId)]
 );
 
-export const account = sqliteTable(
+export const account = pgTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -59,18 +61,14 @@ export const account = sqliteTable(
     accessToken: text("accessToken"),
     refreshToken: text("refreshToken"),
     idToken: text("idToken"),
-    accessTokenExpiresAt: integer("accessTokenExpiresAt", {
-      mode: "timestamp",
-    }),
-    refreshTokenExpiresAt: integer("refreshTokenExpiresAt", {
-      mode: "timestamp",
-    }),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: integer("updatedAt", { mode: "timestamp" })
+    updatedAt: timestamp("updatedAt")
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date())
       .notNull(),
@@ -78,17 +76,17 @@ export const account = sqliteTable(
   (table) => [index("account_userId_idx").on(table.userId)]
 );
 
-export const verification = sqliteTable(
+export const verification = pgTable(
   "verification",
   {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
-    updatedAt: integer("updatedAt", { mode: "timestamp" })
+    updatedAt: timestamp("updatedAt")
       .$defaultFn(() => new Date())
       .$onUpdate(() => new Date())
       .notNull(),
@@ -96,7 +94,7 @@ export const verification = sqliteTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 );
 
-export const creditTransaction = sqliteTable(
+export const creditTransaction = pgTable(
   "creditTransaction",
   {
     id: text("id").primaryKey(),
@@ -109,7 +107,7 @@ export const creditTransaction = sqliteTable(
       enum: ["purchase", "thumbnail_generation", "refund", "grant"],
     }).notNull(),
     description: text("description").notNull(),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
   },
@@ -156,35 +154,39 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-export const game = sqliteTable("game", {
-  universeId: integer("universeId").primaryKey(),
-  rootPlaceId: integer("rootPlaceId").notNull(),
+export const game = pgTable("game", {
+  universeId: bigint("universeId", { mode: "number" }).primaryKey(),
+  rootPlaceId: bigint("rootPlaceId", { mode: "number" }).notNull(),
   name: text("name").notNull(),
   playerCount: integer("playerCount").notNull().default(0),
-  totalUpVotes: integer("totalUpVotes").notNull().default(0),
-  totalDownVotes: integer("totalDownVotes").notNull().default(0),
-  visits: integer("visits").notNull().default(0),
-  favoritedCount: integer("favoritedCount").notNull().default(0),
+  totalUpVotes: bigint("totalUpVotes", { mode: "number" }).notNull().default(0),
+  totalDownVotes: bigint("totalDownVotes", { mode: "number" })
+    .notNull()
+    .default(0),
+  visits: bigint("visits", { mode: "number" }).notNull().default(0),
+  favoritedCount: bigint("favoritedCount", { mode: "number" })
+    .notNull()
+    .default(0),
   genre: text("genre"),
-  dateCreated: integer("dateCreated", { mode: "timestamp" }),
-  createdAt: integer("createdAt", { mode: "timestamp" })
+  dateCreated: timestamp("dateCreated"),
+  createdAt: timestamp("createdAt")
     .$defaultFn(() => new Date())
     .notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" })
+  updatedAt: timestamp("updatedAt")
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const gameCcu = sqliteTable(
+export const gameCcu = pgTable(
   "gameCcu",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    universeId: integer("universeId")
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    universeId: bigint("universeId", { mode: "number" })
       .notNull()
       .references(() => game.universeId, { onDelete: "cascade" }),
     playerCount: integer("playerCount").notNull(),
-    timestamp: integer("timestamp", { mode: "timestamp" })
+    timestamp: timestamp("timestamp")
       .$defaultFn(() => new Date())
       .notNull(),
   },
@@ -208,7 +210,7 @@ export const gameCcuRelations = relations(gameCcu, ({ one }) => ({
   }),
 }));
 
-export const thumbnail = sqliteTable(
+export const thumbnail = pgTable(
   "thumbnail",
   {
     id: text("id").primaryKey(),
@@ -216,14 +218,14 @@ export const thumbnail = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     imagePath: text("imagePath").notNull(),
-    referenceImagePaths: text("referenceImagePaths", { mode: "json" })
+    referenceImagePaths: json("referenceImagePaths")
       .$type<string[]>()
       .notNull()
       .default([]),
     prompt: text("prompt").notNull(),
     model: text("model").notNull(),
     kind: text("kind").notNull().default("thumbnail"),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
   },
@@ -239,7 +241,7 @@ export const thumbnailRelations = relations(thumbnail, ({ one }) => ({
   }),
 }));
 
-export const asset = sqliteTable(
+export const asset = pgTable(
   "asset",
   {
     id: text("id").primaryKey(),
@@ -248,7 +250,7 @@ export const asset = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     path: text("path").notNull(),
     name: text("name").notNull(),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
   },
@@ -264,7 +266,7 @@ export const assetRelations = relations(asset, ({ one }) => ({
   }),
 }));
 
-export const notification = sqliteTable(
+export const notification = pgTable(
   "notification",
   {
     id: text("id").primaryKey(),
@@ -277,8 +279,8 @@ export const notification = sqliteTable(
     title: text("title").notNull(),
     body: text("body"),
     url: text("url"),
-    read: integer("read", { mode: "boolean" }).notNull().default(false),
-    createdAt: integer("createdAt", { mode: "timestamp" })
+    read: boolean("read").notNull().default(false),
+    createdAt: timestamp("createdAt")
       .$defaultFn(() => new Date())
       .notNull(),
   },
@@ -298,18 +300,14 @@ export const notificationRelations = relations(notification, ({ one }) => ({
   }),
 }));
 
-export const notificationPreference = sqliteTable("notificationPreference", {
+export const notificationPreference = pgTable("notificationPreference", {
   userId: text("userId")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
-  productUpdates: integer("productUpdates", { mode: "boolean" })
-    .notNull()
-    .default(true),
-  ccuAlerts: integer("ccuAlerts", { mode: "boolean" }).notNull().default(true),
-  emailNotifications: integer("emailNotifications", { mode: "boolean" })
-    .notNull()
-    .default(true),
-  updatedAt: integer("updatedAt", { mode: "timestamp" })
+  productUpdates: boolean("productUpdates").notNull().default(true),
+  ccuAlerts: boolean("ccuAlerts").notNull().default(true),
+  emailNotifications: boolean("emailNotifications").notNull().default(true),
+  updatedAt: timestamp("updatedAt")
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
@@ -325,12 +323,12 @@ export const notificationPreferenceRelations = relations(
   })
 );
 
-export const contactMessage = sqliteTable("contactMessage", {
+export const contactMessage = pgTable("contactMessage", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   message: text("message").notNull(),
-  createdAt: integer("createdAt", { mode: "timestamp" })
+  createdAt: timestamp("createdAt")
     .$defaultFn(() => new Date())
     .notNull(),
 });

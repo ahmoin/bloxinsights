@@ -1,5 +1,5 @@
-import { createClient } from "@libsql/client";
 import { config } from "dotenv";
+import postgres from "postgres";
 
 config({ path: ".env.local" });
 
@@ -42,19 +42,16 @@ async function fetchCreatedDates(universeIds, attempt = 1) {
 }
 
 async function main() {
-  const client = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
+  const client = postgres(process.env.DATABASE_URL);
 
-  const missing = await client.execute(
-    "SELECT universeId FROM game WHERE dateCreated IS NULL"
+  const missing = await client.unsafe(
+    'SELECT "universeId" FROM "game" WHERE "dateCreated" IS NULL'
   );
-  const universeIds = missing.rows.map((row) => Number(row.universeId));
+  const universeIds = missing.map((row) => Number(row.universeId));
   console.log("games missing dateCreated:", universeIds.length);
 
   if (universeIds.length === 0) {
-    client.close();
+    await client.end();
     return;
   }
 
@@ -64,16 +61,12 @@ async function main() {
   for (const [index, batch] of batches.entries()) {
     const dateCreatedByUniverseId = await fetchCreatedDates(batch);
 
-    const statements = [...dateCreatedByUniverseId.entries()].map(
-      ([universeId, dateCreated]) => ({
-        sql: "UPDATE game SET dateCreated = ? WHERE universeId = ?",
-        args: [Math.floor(dateCreated.getTime() / 1000), universeId],
-      })
-    );
-
-    if (statements.length > 0) {
-      await client.batch(statements, "write");
-      updated += statements.length;
+    for (const [universeId, dateCreated] of dateCreatedByUniverseId) {
+      await client.unsafe(
+        'UPDATE "game" SET "dateCreated" = $1 WHERE "universeId" = $2',
+        [dateCreated, universeId]
+      );
+      updated++;
     }
 
     console.log(`batch ${index + 1}/${batches.length} done`);
@@ -81,7 +74,7 @@ async function main() {
   }
 
   console.log(`updated dateCreated for ${updated} games`);
-  client.close();
+  await client.end();
 }
 
 await main();

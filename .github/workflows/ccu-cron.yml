@@ -18,6 +18,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Capture CCU snapshot
         env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: node scripts/capture-ccu.mjs

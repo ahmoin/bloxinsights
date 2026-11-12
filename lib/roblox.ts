@@ -12,6 +12,8 @@ const HTTP_TOO_MANY_REQUESTS = 429;
 const RATE_LIMIT_WAIT_MS = 65_000;
 const MAX_ATTEMPTS = 3;
 const BATCH_PACING_MS = 2000;
+const CREATORS_REVALIDATE_SECONDS = 21_600;
+const THUMBNAILS_REVALIDATE_SECONDS = 3600;
 
 const DISCOVERY_COUNTRIES = [
   "gb",
@@ -181,7 +183,7 @@ export async function fetchGameCreators(
   try {
     const response = await fetch(
       `${GAMES_API_URL}?universeIds=${universeIds.join(",")}`,
-      { cache: "no-store" }
+      { next: { revalidate: CREATORS_REVALIDATE_SECONDS } }
     );
     if (!response.ok) {
       return creatorsByUniverseId;
@@ -209,13 +211,13 @@ export async function fetchGameIcons(
   const params = new URLSearchParams({
     universeIds: universeIds.join(","),
     size: "128x128",
-    format: "Png",
+    format: "Webp",
     isCircular: "false",
   });
 
   try {
     const response = await fetch(`${GAME_ICONS_URL}?${params.toString()}`, {
-      cache: "no-store",
+      next: { revalidate: THUMBNAILS_REVALIDATE_SECONDS },
     });
     if (!response.ok) {
       return iconsByUniverseId;
@@ -251,7 +253,7 @@ export async function fetchGameThumbnails(
   try {
     const response = await fetch(
       `${GAME_THUMBNAILS_URL}?${params.toString()}`,
-      { cache: "no-store" }
+      { next: { revalidate: THUMBNAILS_REVALIDATE_SECONDS } }
     );
     if (!response.ok) {
       return thumbnailsByUniverseId;
